@@ -3,7 +3,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
 <style>.clock{font:600 56px Fraunces,serif}.item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--n1)}
-.item.next{background:#fdf8ec;margin:0 -12px;padding:12px}.x{background:none;border:0;color:#b91c1c;cursor:pointer;font-size:18px}</style></head><body>
+.item.next{background:#fdf8ec;margin:0 -12px;padding:12px}.x{background:none;border:0;color:#b91c1c;cursor:pointer;font-size:18px}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="top"><div class="wrap"><b class="serif">Ring Bell System</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
 <main class="wrap" style="padding:36px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px">
 <div class="card" style="text-align:center"><p class="k" style="color:#a97812">Current time</p><div class="clock" id="clk">--:--:--</div>
@@ -12,17 +12,48 @@
 <div class="card"><h3>Bell schedule</h3><div style="display:flex;gap:8px;margin:14px 0"><input type="time" id="t"><input id="n" placeholder="Label (e.g. Period 1)"><button class="btn" id="add">Add</button></div>
 <div id="list"></div><p style="margin-top:14px"><button class="btn ghost" style="color:#0e1b34" id="def">Load sample schedule</button></p></div></main>
 <script>
-const $=id=>document.getElementById(id);let bells=JSON.parse(localStorage.getItem('mps-bells')||'[]'),last='';
+const $=id=>document.getElementById(id);
+const loadBells=()=>{try{const v=JSON.parse(localStorage.getItem('mps-bells')||'[]');return Array.isArray(v)?v.filter(b=>b&&typeof b.t==='string'):[]}catch(e){console.warn('Unreadable bell schedule, starting empty.',e);return[]}};
+let bells=loadBells();
+// One shared AudioContext. Creating a new one per beep hits the browser's
+// concurrent-context limit (about six) and then the bell goes silent.
+let actx=null;
+function audio(){if(!actx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;actx=new AC()}
+if(actx.state==='suspended')actx.resume().catch(()=>{});return actx}
 const save=()=>{localStorage.setItem('mps-bells',JSON.stringify(bells));render()};
-function beep(){const a=new (window.AudioContext||window.webkitAudioContext)();[0,.7,1.4].forEach(d=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);
+function beep(){const a=audio();if(!a)return;
+[0,.7,1.4].forEach(d=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);
 g.gain.setValueAtTime(.4,a.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d+.6);o.start(a.currentTime+d);o.stop(a.currentTime+d+.6)})}
 function render(){bells.sort((a,b)=>a.t.localeCompare(b.t));const now=new Date().toTimeString().slice(0,5);const nx=bells.find(b=>b.t>now);
 $('list').replaceChildren(...bells.map((b,i)=>{const d=document.createElement('div');d.className='item'+(b===nx?' next':'');
-d.innerHTML=`<span><b>${b.t}</b> &nbsp;<span class="lbl"></span></span><button class="x" title="Delete">✕</button>`;d.querySelector('.lbl').textContent=b.n;d.querySelector('.x').onclick=()=>{bells.splice(i,1);save()};return d}));
+d.innerHTML='<span><b></b> &nbsp;<span class="lbl"></span></span><button class="x" title="Delete">✕</button>';
+// textContent, not innerHTML: stored times must never be parsed as markup.
+d.querySelector('b').textContent=b.t;d.querySelector('.lbl').textContent=b.n||'';d.querySelector('.x').onclick=()=>{bells.splice(i,1);save()};return d}));
 $('nx').textContent=nx?`Next bell: ${nx.t} — ${nx.n}`:'No more bells today'}
 $('add').onclick=()=>{if(!$('t').value)return;bells.push({t:$('t').value,n:$('n').value||'Bell'});$('t').value=$('n').value='';save()};
 $('def').onclick=()=>{bells=[['08:00','Assembly'],['08:30','Period 1'],['09:10','Period 2'],['09:50','Period 3'],['10:30','Short break'],['10:50','Period 4'],['11:30','Period 5'],['12:10','Lunch'],['12:50','Period 6'],['13:30','Period 7'],['14:00','School off']].map(([t,n])=>({t,n}));save()};
 $('ring').onclick=beep;
-setInterval(()=>{const d=new Date();$('clk').textContent=d.toTimeString().slice(0,8);const hm=d.toTimeString().slice(0,5);
-if(d.getSeconds()===0&&hm!==last&&bells.some(b=>b.t===hm)){last=hm;beep()}if(d.getSeconds()===1)render()},1000);render();
+const pad=n=>String(n).padStart(2,'0');
+const mins=hhmm=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(hhmm||'').trim());if(!m)return NaN;return +m[1]*60+ +m[2]};
+let lastMinute='';
+// Compare minutes instead of waiting for second 0: browsers throttle timers in
+// background tabs, so second 0 is often skipped and bells would never sound.
+// The previous minute is remembered so bells missed while hidden still ring
+// once the tab is looked at again.
+function ringIfDue(){
+ const d=new Date(),hm=pad(d.getHours())+':'+pad(d.getMinutes());
+ if(hm===lastMinute)return;
+ const from=lastMinute?mins(lastMinute):NaN,to=mins(hm);
+ lastMinute=hm;
+ const due=bells.filter(b=>{const m=mins(b.t);return !Number.isNaN(m)&&(Number.isNaN(from)?m===to:(m>from&&m<=to))});
+ if(due.length)beep();
+}
+function tick(){const d=new Date();
+ $('clk').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+ ringIfDue();
+ if(d.getSeconds()<2)render()}
+setInterval(tick,1000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+window.addEventListener('focus',tick);
+tick();render();
 </script></body></html>

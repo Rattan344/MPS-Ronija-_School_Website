@@ -5,17 +5,21 @@
 <style>body{min-height:100vh;display:grid;place-items:center;background:#070f20}
 .box{background:#fff;border-radius:16px;padding:36px;width:min(92vw,400px)}
 #cap{border-radius:8px;border:1px solid #b9c8e0;display:block}.row{display:flex;gap:10px;align-items:center}
-#err{color:#b91c1c;font-size:14px;min-height:20px;margin:12px 0 0}</style></head><body>
+#err{color:#b91c1c;font-size:14px;min-height:20px;margin:12px 0 0}
+.warn{margin:16px 0 0;padding:10px 12px;border-radius:8px;background:#fdf8ec;border:1px solid #f2dc94;color:#875a11;font-size:12px;line-height:1.5}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="box"><h1 style="font-size:28px">Admin Login</h1><p style="color:#243a5e;margin:6px 0 10px">Mamta Public School, Ronija</p>
 <form id="f" autocomplete="off">
-<label for="u">Login ID</label><input id="u" required>
-<label for="p">Password</label><input id="p" type="password" required>
-<label>Captcha</label><div class="row"><canvas id="cap" width="200" height="56"></canvas><button type="button" class="btn ghost" id="rf" style="color:#0e1b34;padding:9px 14px" title="New captcha">↻</button></div>
-<input id="c" placeholder="Type the characters above" style="margin-top:10px" required>
-<p id="err"></p><button class="btn dark" style="width:100%;margin-top:6px">Sign in</button></form>
+<label for="u">Login ID</label><input id="u" name="username" autocomplete="username" required>
+<label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+<label for="c">Captcha</label><div class="row"><canvas id="cap" width="200" height="56" aria-label="Captcha image" role="img"></canvas><button type="button" class="btn ghost" id="rf" style="color:#0e1b34;padding:9px 14px" title="New captcha" aria-label="Get a new captcha">↻</button></div>
+<input id="c" aria-label="Captcha code" placeholder="Type the characters above" style="margin-top:10px" required>
+<p id="err" role="alert" aria-live="polite"></p><button class="btn dark" style="width:100%;margin-top:6px">Sign in</button></form>
+<p class="warn"><b>Security note:</b> this login runs entirely in your browser. The credentials below are readable in the page source by anyone, so they only keep casual visitors out of the admin tools — they are not real protection.</p>
 <p style="text-align:center;margin:18px 0 0"><a href="index.html" style="font-size:14px;color:#243a5e">← Back to website</a></p></div>
+<script src="common.js"></script>
 <script>
-// CHANGE THESE before use. Client-side only; see note in chat.
+/* CHANGE THESE before use. Anyone can read them via View Source, so treat this
+   as a convenience lock only. See the Security section of README.md. */
 const ADMIN_ID='MPS@Admin#2026', ADMIN_PASS='Ron!ja$Gr8Noida*417';
 // const ADMIN_ID='55', ADMIN_PASS='55';
 let code='';
@@ -27,7 +31,9 @@ for(let i=0;i<code.length;i++){x.save();x.translate(20+i*28,34+Math.random()*8-4
 for(let i=0;i<60;i++){x.fillStyle='rgba(14,27,52,.35)';x.fillRect(Math.random()*200,Math.random()*56,2,2)}}
 draw();document.getElementById('rf').onclick=draw;
 document.getElementById('f').onsubmit=e=>{e.preventDefault();const err=document.getElementById('err');
-if(document.getElementById('c').value.trim().toUpperCase()!==code){err.textContent='Captcha did not match. Try the new one.';draw();document.getElementById('c').value='';return}
-if(document.getElementById('u').value!==ADMIN_ID||document.getElementById('p').value!==ADMIN_PASS){err.textContent='Incorrect login ID or password.';draw();document.getElementById('c').value='';return}
-sessionStorage.setItem('mps-auth','1');location.href='dashboard.html'};
+ const id=document.getElementById('u').value.trim(),pass=document.getElementById('p').value;
+ err.textContent='';
+ if(document.getElementById('c').value.trim().toUpperCase()!==code){err.textContent='Captcha did not match. Try the new one.';draw();document.getElementById('c').value='';return}
+ if(id!==ADMIN_ID||pass!==ADMIN_PASS){err.textContent='Incorrect login ID or password.';draw();document.getElementById('c').value='';return}
+ mpsStore.setItem('mps-auth','1');location.href='dashboard.html'};
 </script></body></html>

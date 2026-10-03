@@ -7,7 +7,7 @@
 .pv .h{background:#070f20;color:#fff;padding:7px 14px;display:flex;justify-content:space-between;font:600 13px Fraunces,serif}.pv .h small{color:#e9c65a;font:500 8px 'Inter Tight';letter-spacing:.2em}
 .pv .b{display:flex;gap:12px;padding:12px 14px;flex:1}.ph{width:27%;aspect-ratio:4/5;border:2px solid var(--g);border-radius:6px;background:#dfe6f2;overflow:hidden;display:grid;place-items:center}
 .ph img{width:100%;height:100%;object-fit:cover}.pv p{margin:0}.l{font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:#2f4b78}.v{font-size:11px;font-weight:600;margin-bottom:5px}
-.pv .nm{font:600 16px Fraunces,serif;margin-bottom:6px}</style></head><body>
+.pv .nm{font:600 16px Fraunces,serif;margin-bottom:6px}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="top"><div class="wrap"><b class="serif">Generate ID Card</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
 <div class="wrap studio"><div class="card"><h3>Student details</h3>
 <label>Full name</label><input id="name" maxlength="34" placeholder="Student name">
@@ -17,16 +17,24 @@
 <label>Layout</label><select id="layout"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select>
 <label>Photo</label><input id="photo" type="file" accept="image/*"><p style="margin-top:20px"><button class="btn dark" id="go">Open Print Page</button></p></div>
 <div style="display:flex;flex-direction:column;align-items:center"><p class="k" style="color:#a97812">Live preview</p>
-<div class="pv"><div class="h"><span>Mamta Public School<br><small>RONIJA · STUDENT ID</small></span><small>2026 – 27</small></div>
+<div class="pv"><div class="h"><span>Mamta Public School<br><small>RONIJA · STUDENT ID</small></span><small id="vyear">2026 – 27</small></div>
 <div class="b"><div class="ph"><img id="pi" hidden alt=""><span id="pp">👤</span></div><div style="min-width:0"><p class="l">Name</p><p class="nm" id="vn">Student Name</p>
-<p class="l">Class / Sec</p><p class="v" id="vg">—</p><p class="l">Roll · Blood</p><p class="v" id="vr">—</p><p class="l">Parent</p><p class="v" id="vp">—</p></div></div></div></div></div>
+<p class="l">Class / Sec</p><p class="v" id="vg">—</p><p class="l">Roll · Blood</p><p class="v" id="vr">—</p><p class="l">Parent</p><p class="v" id="vp">—</p><p class="l">Address</p><p class="v" id="va">—</p></div></div></div></div></div>
 <script>
 const $=id=>document.getElementById(id);let photoData='';
+// Single source of truth for the academic session, also used by print.html.
+const SESSION_START=2026;                              // change each April
+const SESSION=SESSION_START+' – '+String(SESSION_START+1).slice(2);
+$('vyear').textContent=SESSION;
 function up(){$('vn').textContent=$('name').value||'Student Name';$('vg').textContent=($('grade').value||'—')+' · '+($('section').value||'—');
-$('vr').textContent=($('roll').value||'—')+' · '+($('blood').value||'—');$('vp').textContent=$('parent').value||'—'}
-['name','grade','section','roll','blood','parent'].forEach(i=>$(i).addEventListener('input',up));
+$('vr').textContent=($('roll').value||'—')+' · '+($('blood').value||'—');$('vp').textContent=$('parent').value||'—';$('va').textContent=$('address').value||'—'}
+['name','grade','section','roll','blood','parent','address'].forEach(i=>$(i).addEventListener('input',up));
 $('photo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{photoData=r.result;$('pi').src=photoData;$('pi').hidden=false;$('pp').hidden=true};r.readAsDataURL(f)};
-$('go').onclick=()=>{const y=new Date().getFullYear()+1;
-sessionStorage.setItem('rosewood-card-data',JSON.stringify({name:$('name').value||'Student Name',grade:$('grade').value||'—',roll:$('roll').value||'—',blood:$('blood').value||'—',section:$('section').value||'—',parent:$('parent').value||'—',address:$('address').value||'—',layout:$('layout').value,valid:'06 / '+y,photo:photoData}));
-location.href='print.html'};
+$('go').onclick=()=>{
+ const d={name:$('name').value.trim()||'Student Name',grade:$('grade').value.trim()||'—',roll:$('roll').value.trim()||'—',
+  blood:$('blood').value||'—',section:$('section').value.trim()||'—',parent:$('parent').value.trim()||'—',
+  address:$('address').value.trim()||'—',layout:$('layout').value,valid:'06 / '+(SESSION_START+1),photo:photoData};
+ if(!writeSessionJSON('mps-card-data',d)){alert('Could not save the card details. Your browser may be blocking storage.');return}
+ location.href='print.html'};
+up();
 </script></body></html>

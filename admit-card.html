@@ -35,10 +35,12 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 .ft{display:flex;justify-content:space-between;align-items:flex-end;padding:0 8mm 4mm;margin-top:auto;gap:5mm}
 .sg{text-align:center;font-size:3mm;width:42mm;border-top:.3mm solid #000;padding-top:1mm}
 .vq{text-align:center;font-size:2.4mm;color:#243a5e}.vq div{display:inline-block;padding:1mm;background:#fff;border:.3mm solid #182746}.vq p{margin:1mm 0 0;font-family:monospace}
+.qrwarn{display:none;border:.3mm dashed #b91c1c;color:#b91c1c;padding:2mm 1mm;font-size:2.2mm;line-height:1.3}
+#qrwarn[hidden]{display:none}
 .foot{background:#070f20;color:#f2dc94;text-align:center;font-size:2.8mm;padding:2.5mm 4mm;letter-spacing:.04em}
 @page{size:A4;margin:0}
 @media print{html,body{height:297mm;overflow:hidden}body{background:#fff}.a4{height:296.5mm}.wrap2{display:block;padding:0}.stage{overflow:visible}.a4{box-shadow:none;margin:0}}
-</style></head><body>
+</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="top noprint"><div class="wrap"><b class="serif">Generate Admit Card</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
 <div class="wrap2">
 <div class="card noprint"><h3>Details</h3>
@@ -52,8 +54,8 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 <label>Timetable (date · subject · time)</label><div class="rows" id="rows"></div>
 <p><button class="btn ghost" style="color:#0e1b34" id="add">+ Add row</button></p>
 <label>Verification serial</label><div style="display:flex;gap:8px"><input id="serial" readonly><button class="btn ghost" style="color:#0e1b34" id="newser" title="New random serial">↻</button></div>
-<p style="font-size:12px;color:#5b7fae;margin:6px 0 16px">Each card gets a random serial and a QR code. Scanning it opens the verification page.</p>
-<button class="btn dark" onclick="print()">Print A4</button> <a class="btn" id="testlink" target="_blank" rel="noopener">Test verification page ↗</a><p id="urltxt" style="font-size:11px;color:#5b7fae;word-break:break-all;margin-top:12px"></p></div>
+<p style="font-size:12px;color:#5b7fae;margin:6px 0 16px">Each card gets a random serial and a QR code. Scanning it opens the verification page.</p><p id="ttlwarn" hidden style="font-size:12px;color:#b45309;background:#fdf8ec;border:1px solid #f2dc94;border-radius:8px;padding:9px 11px;margin:0 0 14px">The timetable is empty. Fill in at least one date, subject and time, or this card will print with a blank table.</p>
+<button class="btn dark" onclick="print()">Print A4</button> <a class="btn" id="testlink" target="_blank" rel="noopener">Test verification page ↗</a><p id="qrerr" hidden style="font-size:12px;color:#b91c1c;margin:10px 0 0">The QR library could not be loaded, so no scannable code was generated. Check your internet connection or an ad-blocker, then reload. Everything else on this page still works.</p><p id="urltxt" style="font-size:11px;color:#5b7fae;word-break:break-all;margin-top:12px"></p></div>
 
 <div class="stage"><div class="a4" id="sheet"><div class="frame">
 <div class="hd"><div class="logo-box"><img src="logo.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'M'}))"></div>
@@ -73,7 +75,7 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 <li>परीक्षा के दौरान आपस में बातचीत न करें और न ही सामग्री का आदान-प्रदान करें।</li>
 <li>अनुचित साधनों का प्रयोग करने पर उत्तर-पुस्तिका निरस्त कर अनुशासनात्मक कार्रवाई की जाएगी।</li>
 <li>निर्धारित समय से पहले कक्ष न छोड़ें। परिणाम घोषित होने तक इस पत्र को सुरक्षित रखें।</li></ol></div></div>
-<div class="ft"><div class="sg">Class Teacher</div><div class="vq"><div id="qr"></div><p id="vs">—</p>Scan to verify</div><div class="sg">Principal</div></div>
+<div class="ft"><div class="sg">Class Teacher</div><div class="vq"><div id="qr"></div><div class="qrwarn" id="qrwarn">QR code unavailable<br>(library blocked)</div><p id="vs">—</p>Scan to verify</div><div class="sg">Principal</div></div>
 <div class="foot">MAMTA PUBLIC SCHOOL · RONIJA (GAUTAM BUDDH NAGAR), GREATER NOIDA, UTTAR PRADESH</div>
 </div></div></div></div>
 <datalist id="subj"><option value="Hindi / हिंदी"><option value="English / अंग्रेज़ी"><option value="Mathematics / गणित"><option value="Science / विज्ञान"><option value="Social Science / सामाजिक विज्ञान"><option value="Sanskrit / संस्कृत"><option value="Computer / कंप्यूटर"><option value="General Knowledge / सामान्य ज्ञान"><option value="Physics / भौतिकी"><option value="Chemistry / रसायन विज्ञान"><option value="Biology / जीव विज्ञान"><option value="EVS / पर्यावरण अध्ययन"></datalist>
@@ -89,18 +91,31 @@ let qr;
 function up(){const cu=$('exam').value==='custom';$('cbox').hidden=!cu;const pr=cu?[$('cen').value||'Examination',$('chi').value]:$('exam').value.split('|');
 const d={n:$('name').value,r:$('roll').value,c:$('cls').value,e:(pr[0]+' '+$('sess').value).trim(),id:$('serial').value};
 $('vx').textContent=(pr[1]?pr[1]+' / ':'')+d.e;$('vnh').textContent=$('nameh').value;$('vfh').textContent=$('fatherh').value;$('vn').textContent=d.n||'—';$('vr').textContent=d.r||'—';$('vc').textContent=d.c||'—';$('vf').textContent=$('father').value||'—';$('vs').textContent=d.id;
-$('tb').replaceChildren(...[...$('rows').children].filter(r=>[...r.children].some(i=>i.value)).map(r=>{const tr=document.createElement('tr');[...r.children].forEach(i=>{const td=document.createElement('td');td.textContent=i.value;tr.appendChild(td)});return tr}));
+const filled=[...$('rows').children].filter(r=>[...r.children].some(i=>i.value));
+ $('ttlwarn').hidden=filled.length>0;
+ $('tb').replaceChildren(...filled.map(r=>{const tr=document.createElement('tr');[...r.children].forEach(i=>{const td=document.createElement('td');td.textContent=i.value;tr.appendChild(td)});return tr}));
 const p=btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const sig=h(p+SECRET),url=new URL('verify.html',location.href);url.searchParams.set('d',p);url.searchParams.set('s',sig);
-$('testlink').href=url.href;$('urltxt').textContent='QR opens: '+url.href;$('add').disabled=$('rows').children.length>=12;$('add').textContent=$('rows').children.length>=12?'Maximum 12 rows':'+ Add row';$('qr').innerHTML='';new QRCode($('qr'),{text:url.href,width:80,height:80,correctLevel:QRCode.CorrectLevel.L});fit()}
+$('testlink').href=url.href;$('urltxt').textContent='QR opens: '+url.href;$('add').disabled=$('rows').children.length>=12;$('add').textContent=$('rows').children.length>=12?'Maximum 12 rows':'+ Add row';
+// The QR library comes from a CDN. If it is blocked the page must still work,
+// so never let a missing QRCode kill the rest of the script.
+$('qr').innerHTML='';
+if(window.QRCode){new QRCode($('qr'),{text:url.href,width:80,height:80,correctLevel:QRCode.CorrectLevel.L});$('qr').hidden=false;$('qrwarn').hidden=true}
+else{$('qr').hidden=true;$('qrwarn').hidden=false;$('qrerr').hidden=false}
+fit()}
 // Auto-shrink timetable/instructions spacing so everything stays on ONE A4 page (up to 12 exams)
 function fit(){const sh=$('sheet'),fr=sh.firstElementChild;let k=1;sh.style.setProperty('--k',k);
 while(fr.scrollHeight>fr.clientHeight+1&&k>0.5){k=Math.round((k-0.04)*100)/100;sh.style.setProperty('--k',k)}}
 window.addEventListener('beforeprint',fit);
 ['name','cls','roll','father','nameh','fatherh','sess','cen','chi'].forEach(i=>$(i).oninput=up);$('exam').onchange=up;$('add').onclick=()=>{row();up()};$('newser').onclick=newSerial;
+let photoURL='';
 function photoMode(){const up_=document.querySelector('[name=pm]:checked').value==='upload';$('upbox').hidden=!up_;
 const f=$('photo').files[0],ph=$('ph');
-if(up_&&f){ph.innerHTML='';const i=new Image();i.src=URL.createObjectURL(f);ph.appendChild(i)}else ph.innerHTML='Affix recent<br>passport-size<br>photograph'}
+if(up_&&f){ph.replaceChildren();const i=new Image();
+// Release the previous blob so a long session of students cannot pile up memory.
+if(photoURL){URL.revokeObjectURL(photoURL);photoURL=''}
+photoURL=URL.createObjectURL(f);i.src=photoURL;ph.appendChild(i)}
+else ph.innerHTML='Affix recent<br>passport-size<br>photograph'}
 document.querySelectorAll('[name=pm]').forEach(r=>r.onchange=photoMode);$('photo').onchange=photoMode;
 for(let i=0;i<4;i++)row();newSerial();
 </script></body></html>

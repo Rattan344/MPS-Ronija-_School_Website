@@ -65,15 +65,23 @@
     .blood { color: #b91c1c; font-weight: 700; }
     .signature { margin-top: 3mm; border-top: .2mm solid rgba(14,27,52,.45); padding-top: .6mm; }
     .signature .label { font-size: 1.8mm; }
-    .qr { width: 9mm; height: 9mm; flex: 0 0 auto; margin-left: auto; background: repeating-linear-gradient(45deg, #0e1b34 0 1.1mm, #fff 1.1mm 2.2mm); border: .7mm solid #0e1b34; }
+    .qr { width: 9mm; height: 9mm; flex: 0 0 auto; margin-left: auto; display: grid; place-items: center; border: .7mm solid #0e1b34; overflow: hidden; }
+    .qr img, .qr canvas { width: 100%; height: 100%; display: block; margin: 0; }
+    .qr.unavailable { border-style: dashed; color: #8ba5c9; font-size: 1.8mm; text-align: center; line-height: 1.2; padding: .5mm; }
     .card-footer { padding: 0 4mm 2mm; }
     .barcode { height: 4mm; background: repeating-linear-gradient(90deg, #0e1b34 0 1mm, transparent 1mm 2mm, #0e1b34 2mm 2.5mm, transparent 2.5mm 4mm); }
     .footer-text { display: flex; justify-content: space-between; margin-top: .8mm; font: 1.8mm 'JetBrains Mono', monospace; }
     .hint { margin: 26px 0 0; color: #5b7fae; font-size: 13px; text-align: center; }
+    .warn {
+      display: flex; gap: 14px; align-items: center; justify-content: space-between;
+      margin: 0 0 22px; padding: 14px 18px; border-radius: 12px;
+      background: #fdf3f3; border: 1px solid #e5a3a3; color: #8c1c1c; font-size: 14px;
+    }
+    .warn a { background: #b91c1c; color: #fff; white-space: nowrap; }
     @page { size: 85.6mm 53.98mm; margin: 0; }
     @media print {
       body { background: white; }
-      .toolbar, .sheet-label, .hint { display: none; }
+      .toolbar, .sheet-label, .hint, .warn { display: none; }
       main, .print-sheet { display: block; min-height: 0; width: auto; padding: 0; box-shadow: none; }
       .card { border-radius: 0; box-shadow: none; }
     }
@@ -84,7 +92,7 @@
       .print-sheet { min-height: 430px; padding: 35px 15px; }
     }
   </style>
-</head>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head>
 <body>
   <header class="toolbar">
     <div>
@@ -92,7 +100,7 @@
       <p>Dedicated student ID card printing</p>
     </div>
     <div class="actions">
-      <a class="back-button" href="index.html#studio">← Edit Card</a>
+      <a class="back-button" href="id-card.html">← Edit Card</a>
       <button class="print-button" type="button" id="print-button">Print Card</button>
     </div>
   </header>
@@ -101,52 +109,105 @@
     <section class="print-sheet" aria-label="Printable student ID card">
       <div>
         <p class="sheet-label">Print-ready CR80 card · 85.6 × 53.98 mm</p>
+        <p class="warn" id="warn" hidden>
+          <span>No student details were passed to this page, so the card below is empty.</span>
+          <a href="id-card.html">Open the ID Card editor</a>
+        </p>
         <article class="card" id="card">
           <div class="card-header">
             <div class="school">
               <span class="crest">R</span>
               <div><p class="school-name">MPS Ronija</p><p class="school-sub">Student ID Card</p></div>
             </div>
-            <p class="year">2025 – 26</p>
+            <p class="year" id="year">—</p>
           </div>
           <div class="card-body">
-            <div class="photo"><img id="photo" alt="" hidden /><span id="photo-placeholder">●</span></div>
+            <div class="photo"><img id="photo" alt="" hidden /><span id="photo-placeholder">PHOTO</span></div>
             <div class="details">
-              <p class="label">Name</p><p class="value name" id="name">Ada Lovelace</p>
+              <p class="label">Name</p><p class="value name" id="name">—</p>
               <div class="fields">
-              <div><p class="label">Class</p><p class="value" id="grade">Grade 10</p></div>
-                <div><p class="label">Roll No.</p><p class="value" id="roll">R-2026-014</p></div>
-              <div><p class="label">Section</p><p class="value" id="section">A</p></div>
-              <div><p class="label">Parent</p><p class="value" id="parent">Parent / Guardian</p></div>
+              <div><p class="label">Class</p><p class="value" id="grade">—</p></div>
+                <div><p class="label">Roll No.</p><p class="value" id="roll">—</p></div>
+              <div><p class="label">Section</p><p class="value" id="section">—</p></div>
+              <div><p class="label">Parent</p><p class="value" id="parent">—</p></div>
               <div><p class="label">Blood</p><p class="value blood" id="blood">—</p></div>
-              <div><p class="label">Valid Thru</p><p class="value" id="valid">06 / 2027</p></div>
-              <div style="grid-column:1 / -1"><p class="label">Address</p><p class="value" id="address">Student address</p></div>
+              <div><p class="label">Valid Thru</p><p class="value" id="valid">—</p></div>
+              <div style="grid-column:1 / -1"><p class="label">Address</p><p class="value" id="address">—</p></div>
               </div>
               <div class="signature"><p class="label">Principal's Signature</p><div style="height:4mm"></div></div>
             </div>
             <div><div class="qr" id="qr" aria-label="Unique student QR code"></div></div>
           </div>
-          <div class="card-footer"><div class="barcode"></div><div class="footer-text"><span id="barcode-text">*ROSEWOOD•ADA-LOVELACE•R-2026-014*</span><span>If found, return to school office</span></div></div>
+          <div class="card-footer"><div class="barcode"></div><div class="footer-text"><span id="barcode-text">*MPS-RONIJA••*</span><span>If found, return to school office</span></div></div>
         </article>
         <p class="hint">For best results, choose 100% scale and disable browser headers and footers.</p>
       </div>
     </section>
   </main>
+  <script src="common.js"></script>
   <script>
-    const fallback = { name: 'Ada Lovelace', grade: 'Grade 10', roll: 'R-2026-014', section: 'A', parent: 'Parent / Guardian', address: 'Student address', blood: '—', valid: '06 / 2027', photo: '', layout: 'horizontal' };
-    let data = fallback;
-    try { data = { ...fallback, ...(JSON.parse(sessionStorage.getItem('rosewood-card-data')) || {}) }; } catch (error) { console.warn('Unable to load saved card data.', error); }
+    // Academic session, e.g. "2026 – 27". Derived once so the header, the
+    // validity date and the ID card editor can never disagree with each other.
+    const now = new Date();
+    const SESSION_START = 2026;                       // change each April
+    const SESSION = SESSION_START + ' – ' + String(SESSION_START + 1).slice(2);
+
+    const raw = readSessionJSON('mps-card-data', null);
+    const blank = !raw;
+    const str = (key, placeholder) => {
+      const v = raw ? raw[key] : undefined;
+      return typeof v === 'string' && v.trim() ? v.trim() : placeholder;
+    };
+
+    const data = {
+      name: str('name', '—'),
+      grade: str('grade', '—'),
+      roll: str('roll', '—'),
+      section: str('section', '—'),
+      parent: str('parent', '—'),
+      address: str('address', '—'),
+      blood: str('blood', '—'),
+      valid: str('valid', '06 / ' + (SESSION_START + 1)),
+      layout: raw && raw.layout === 'vertical' ? 'vertical' : 'horizontal',
+      photo: typeof (raw && raw.photo) === 'string' ? raw.photo : ''
+    };
+
     const text = (id, value) => { document.getElementById(id).textContent = value; };
-    text('name', data.name); text('grade', data.grade); text('roll', data.roll); text('section', data.section); text('parent', data.parent); text('address', data.address); text('blood', data.blood); text('valid', data.valid);
-    const safeName = data.name.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
-    const safeRoll = data.roll.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
-    text('barcode-text', `*MPS-RONIJA•${safeName}•${safeRoll}*`);
+    text('year', SESSION);
+    text('name', data.name); text('grade', data.grade); text('roll', data.roll);
+    text('section', data.section); text('parent', data.parent);
+    text('address', data.address); text('blood', data.blood); text('valid', data.valid);
+
+    const slug = (value) => value.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+    const safeName = slug(data.name), safeRoll = slug(data.roll);
+    text('barcode-text', `*MPS-RONIJA•${safeName || 'STUDENT'}•${safeRoll || 'N-A'}*`);
+
     document.getElementById('card').classList.toggle('vertical', data.layout === 'vertical');
-    if (window.QRCode) new QRCode(document.getElementById('qr'), { text: `MPS-RONIJA|${data.name}|${data.roll}|${data.parent}|${data.address}`, width: 34, height: 34, correctLevel: QRCode.CorrectLevel.M });
+
+    const qrBox = document.getElementById('qr');
+    if (window.QRCode) {
+      new QRCode(qrBox, {
+        text: `MPS-RONIJA|${data.name}|${data.roll}|${data.parent}|${data.address}`,
+        width: 34, height: 34, correctLevel: QRCode.CorrectLevel.M
+      });
+    } else {
+      // Never print a decorative fake QR code — say plainly that it is missing.
+      qrBox.classList.add('unavailable');
+      qrBox.textContent = 'QR unavailable';
+    }
+
     if (data.photo) {
       const photo = document.getElementById('photo');
-      photo.src = data.photo; photo.hidden = false; document.getElementById('photo-placeholder').hidden = true;
+      photo.src = data.photo; photo.hidden = false;
+      document.getElementById('photo-placeholder').hidden = true;
     }
+
+    const warn = document.getElementById('warn');
+    if (blank) {
+      warn.hidden = false;
+      warn.querySelector('a').href = 'id-card.html';
+    }
+
     document.getElementById('print-button').addEventListener('click', () => window.print());
   </script>
 </body>

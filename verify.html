@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="style.css">
 <style>body{min-height:100vh;display:grid;place-items:center;background:#070f20;padding:20px}.box{background:#fff;border-radius:16px;padding:32px;width:min(94vw,420px);text-align:center}
 .ic{width:72px;height:72px;border-radius:50%;margin:0 auto 14px;display:grid;place-items:center;font-size:38px;color:#fff}
-dl{text-align:left;margin:20px 0 0;font-size:15px}dt{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#2f4b78;margin-top:10px}dd{margin:0;font-weight:600}</style></head><body>
+dl{text-align:left;margin:20px 0 0;font-size:15px}dt{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#2f4b78;margin-top:10px}dd{margin:0;font-weight:600}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="box" id="b"></div>
 <script>
 const SECRET='mps-ronija-change-me-2026'; // must match admit-card.html
@@ -12,8 +12,16 @@ const h=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.
 a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);
 return ((b>>>0).toString(16).padStart(8,'0')+(a>>>0).toString(16).padStart(8,'0')).toUpperCase()};
 const q=new URLSearchParams(location.search),p=q.get('d')||'',s=q.get('s')||'',b=document.getElementById('b');
-let d=null,ok=false;try{ok=h(p+SECRET)===s;d=JSON.parse(decodeURIComponent(escape(atob(p.replace(/-/g,'+').replace(/_/g,'/')))))}catch(e){ok=false}
-const esc=t=>String(t||'—').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let d=null,ok=false;
+try{
+ if(!p||!s)throw new Error('missing parameters');
+ ok=h(p+SECRET)===s;
+ const raw=atob(p.replace(/-/g,'+').replace(/_/g,'/'));
+ const parsed=JSON.parse(new TextDecoder().decode(Uint8Array.from(raw,c=>c.charCodeAt(0))));
+ if(!parsed||typeof parsed!=='object')throw new Error('unexpected payload');
+ d=parsed;
+}catch(e){ok=false;d=null}
+const esc=t=>String(t??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 b.innerHTML=ok&&d?`<div class="ic" style="background:#15803d">✓</div><h1 style="font-size:26px;color:#15803d">Verified Student</h1><p style="margin:6px 0 0;color:#243a5e">This admit card was issued by Mamta Public School, Ronija.</p>
 <dl><dt>Name</dt><dd>${esc(d.n)}</dd><dt>Roll no.</dt><dd>${esc(d.r)}</dd><dt>Class</dt><dd>${esc(d.c)}</dd><dt>Examination</dt><dd>${esc(d.e)}</dd><dt>Card serial</dt><dd style="font-family:monospace">${esc(d.id)}</dd></dl>`
 :`<div class="ic" style="background:#b91c1c">✕</div><h1 style="font-size:26px;color:#b91c1c">Not Verified</h1><p style="color:#243a5e">This code is invalid or the card has been altered. Please contact the school office.</p>`;
