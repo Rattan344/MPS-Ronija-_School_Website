@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Print Student ID Card — MPS Ronija</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root { color: #0e1b34; font-family: 'Inter Tight', system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #eef1f6; }
+    .toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      padding: 22px clamp(20px, 5vw, 72px); background: #070f20; color: white;
+    }
+    .brand { font: 700 24px Fraunces, Georgia, serif; }
+    .brand span { color: #e9c65a; }
+    .toolbar p { margin: 4px 0 0; color: #b9c8e0; font-size: 13px; }
+    .actions { display: flex; gap: 10px; }
+    button, a {
+      border: 0; border-radius: 999px; padding: 12px 18px; font: 600 14px inherit;
+      text-decoration: none; cursor: pointer;
+    }
+    .print-button { background: #e9c65a; color: #070f20; }
+    .back-button { border: 1px solid #5b7fae; color: #fff; background: transparent; }
+    main { display: grid; place-items: center; padding: clamp(36px, 8vw, 100px) 20px; }
+    .print-sheet {
+      width: min(90vw, 760px); min-height: 520px; display: grid; place-items: center;
+      background: white; border-radius: 18px; box-shadow: 0 24px 70px rgba(14,27,52,.16);
+      padding: 60px 30px;
+    }
+    .sheet-label {
+      margin: 0 0 24px; color: #2f4b78; font-size: 12px; font-weight: 700;
+      letter-spacing: .18em; text-transform: uppercase; text-align: center;
+    }
+    .card {
+      width: 85.6mm; height: 53.98mm; position: relative; overflow: hidden; border-radius: 3.5mm;
+      color: #0e1b34; background: linear-gradient(135deg, #fff 0%, #fdf8ec 55%, #f2dc94 100%);
+      box-shadow: 0 20px 45px rgba(14,27,52,.28);
+    }
+    .card.vertical { width: 53.98mm; height: 85.6mm; }
+    .card.vertical .card-header { height: 16mm; }
+    .card.vertical .card-body { height: 57mm; flex-direction: column; }
+    .card.vertical .photo { width: 30mm; height: 36mm; align-self: center; }
+    .card.vertical .qr { position: absolute; right: 4mm; top: 19mm; }
+    .card.vertical .card-footer { position: absolute; bottom: 0; width: 100%; }
+    .card-header { height: 12mm; display: flex; align-items: center; justify-content: space-between; padding: 0 4mm; background: #070f20; color: white; }
+    .school { display: flex; align-items: center; gap: 2mm; }
+    .crest { width: 6mm; height: 6mm; display: grid; place-items: center; border-radius: 50%; background: #dcae2e; color: #070f20; font: 700 4mm Fraunces, Georgia, serif; }
+    .school-name { margin: 0; font: 600 4mm Fraunces, Georgia, serif; line-height: 1; }
+    .school-sub, .year { margin: 1mm 0 0; color: #e9c65a; font-size: 2mm; letter-spacing: .18em; text-transform: uppercase; }
+    .year { margin: 0; }
+    .card-body { display: flex; gap: 3mm; height: 32mm; padding: 3mm 4mm 2mm; }
+    .photo { width: 21mm; height: 26mm; flex: 0 0 auto; display: grid; place-items: center; overflow: hidden; border: .7mm solid #dcae2e; border-radius: 1.5mm; background: #dfe6f2; color: #8ba5c9; font-size: 10mm; }
+    .photo img { width: 100%; height: 100%; object-fit: cover; }
+    .details { min-width: 0; flex: 1; }
+    .label { margin: 0; color: #2f4b78; font-size: 2mm; letter-spacing: .2em; text-transform: uppercase; }
+    .value { margin: .6mm 0 2mm; font-size: 3mm; font-weight: 600; line-height: 1.1; }
+    .name { overflow: hidden; font: 600 5mm Fraunces, Georgia, serif; text-overflow: ellipsis; white-space: nowrap; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; column-gap: 3mm; }
+    .blood { color: #b91c1c; font-weight: 700; }
+    .signature { margin-top: 3mm; border-top: .2mm solid rgba(14,27,52,.45); padding-top: .6mm; }
+    .signature .label { font-size: 1.8mm; }
+    .qr { width: 9mm; height: 9mm; flex: 0 0 auto; margin-left: auto; background: repeating-linear-gradient(45deg, #0e1b34 0 1.1mm, #fff 1.1mm 2.2mm); border: .7mm solid #0e1b34; }
+    .card-footer { padding: 0 4mm 2mm; }
+    .barcode { height: 4mm; background: repeating-linear-gradient(90deg, #0e1b34 0 1mm, transparent 1mm 2mm, #0e1b34 2mm 2.5mm, transparent 2.5mm 4mm); }
+    .footer-text { display: flex; justify-content: space-between; margin-top: .8mm; font: 1.8mm 'JetBrains Mono', monospace; }
+    .hint { margin: 26px 0 0; color: #5b7fae; font-size: 13px; text-align: center; }
+    @page { size: 85.6mm 53.98mm; margin: 0; }
+    @media print {
+      body { background: white; }
+      .toolbar, .sheet-label, .hint { display: none; }
+      main, .print-sheet { display: block; min-height: 0; width: auto; padding: 0; box-shadow: none; }
+      .card { border-radius: 0; box-shadow: none; }
+    }
+    @media (max-width: 600px) {
+      .toolbar { align-items: flex-start; flex-direction: column; }
+      .actions { width: 100%; }
+      .actions > * { flex: 1; text-align: center; }
+      .print-sheet { min-height: 430px; padding: 35px 15px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div>
+      <div class="brand">MPS <span>Ronija</span></div>
+      <p>Dedicated student ID card printing</p>
+    </div>
+    <div class="actions">
+      <a class="back-button" href="index.html#studio">← Edit Card</a>
+      <button class="print-button" type="button" id="print-button">Print Card</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="print-sheet" aria-label="Printable student ID card">
+      <div>
+        <p class="sheet-label">Print-ready CR80 card · 85.6 × 53.98 mm</p>
+        <article class="card" id="card">
+          <div class="card-header">
+            <div class="school">
+              <span class="crest">R</span>
+              <div><p class="school-name">MPS Ronija</p><p class="school-sub">Student ID Card</p></div>
+            </div>
+            <p class="year">2025 – 26</p>
+          </div>
+          <div class="card-body">
+            <div class="photo"><img id="photo" alt="" hidden /><span id="photo-placeholder">●</span></div>
+            <div class="details">
+              <p class="label">Name</p><p class="value name" id="name">Ada Lovelace</p>
+              <div class="fields">
+              <div><p class="label">Class</p><p class="value" id="grade">Grade 10</p></div>
+                <div><p class="label">Roll No.</p><p class="value" id="roll">R-2026-014</p></div>
+              <div><p class="label">Section</p><p class="value" id="section">A</p></div>
+              <div><p class="label">Parent</p><p class="value" id="parent">Parent / Guardian</p></div>
+              <div><p class="label">Blood</p><p class="value blood" id="blood">—</p></div>
+              <div><p class="label">Valid Thru</p><p class="value" id="valid">06 / 2027</p></div>
+              <div style="grid-column:1 / -1"><p class="label">Address</p><p class="value" id="address">Student address</p></div>
+              </div>
+              <div class="signature"><p class="label">Principal's Signature</p><div style="height:4mm"></div></div>
+            </div>
+            <div><div class="qr" id="qr" aria-label="Unique student QR code"></div></div>
+          </div>
+          <div class="card-footer"><div class="barcode"></div><div class="footer-text"><span id="barcode-text">*ROSEWOOD•ADA-LOVELACE•R-2026-014*</span><span>If found, return to school office</span></div></div>
+        </article>
+        <p class="hint">For best results, choose 100% scale and disable browser headers and footers.</p>
+      </div>
+    </section>
+  </main>
+  <script>
+    const fallback = { name: 'Ada Lovelace', grade: 'Grade 10', roll: 'R-2026-014', section: 'A', parent: 'Parent / Guardian', address: 'Student address', blood: '—', valid: '06 / 2027', photo: '', layout: 'horizontal' };
+    let data = fallback;
+    try { data = { ...fallback, ...(JSON.parse(sessionStorage.getItem('rosewood-card-data')) || {}) }; } catch (error) { console.warn('Unable to load saved card data.', error); }
+    const text = (id, value) => { document.getElementById(id).textContent = value; };
+    text('name', data.name); text('grade', data.grade); text('roll', data.roll); text('section', data.section); text('parent', data.parent); text('address', data.address); text('blood', data.blood); text('valid', data.valid);
+    const safeName = data.name.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+    const safeRoll = data.roll.toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+    text('barcode-text', `*MPS-RONIJA•${safeName}•${safeRoll}*`);
+    document.getElementById('card').classList.toggle('vertical', data.layout === 'vertical');
+    if (window.QRCode) new QRCode(document.getElementById('qr'), { text: `MPS-RONIJA|${data.name}|${data.roll}|${data.parent}|${data.address}`, width: 34, height: 34, correctLevel: QRCode.CorrectLevel.M });
+    if (data.photo) {
+      const photo = document.getElementById('photo');
+      photo.src = data.photo; photo.hidden = false; document.getElementById('photo-placeholder').hidden = true;
+    }
+    document.getElementById('print-button').addEventListener('click', () => window.print());
+  </script>
+</body>
+</html>

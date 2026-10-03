@@ -1,0 +1,32 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generate ID Card — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<style>.studio{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:36px;padding:40px 24px}
+.pv{width:100%;max-width:440px;aspect-ratio:85.6/53.98;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#fff,#fdf8ec 55%,#f2dc94);box-shadow:0 24px 50px -18px rgba(14,27,52,.5);display:flex;flex-direction:column}
+.pv .h{background:#070f20;color:#fff;padding:7px 14px;display:flex;justify-content:space-between;font:600 13px Fraunces,serif}.pv .h small{color:#e9c65a;font:500 8px 'Inter Tight';letter-spacing:.2em}
+.pv .b{display:flex;gap:12px;padding:12px 14px;flex:1}.ph{width:27%;aspect-ratio:4/5;border:2px solid var(--g);border-radius:6px;background:#dfe6f2;overflow:hidden;display:grid;place-items:center}
+.ph img{width:100%;height:100%;object-fit:cover}.pv p{margin:0}.l{font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:#2f4b78}.v{font-size:11px;font-weight:600;margin-bottom:5px}
+.pv .nm{font:600 16px Fraunces,serif;margin-bottom:6px}</style></head><body>
+<div class="top"><div class="wrap"><b class="serif">Generate ID Card</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
+<div class="wrap studio"><div class="card"><h3>Student details</h3>
+<label>Full name</label><input id="name" maxlength="34" placeholder="Student name">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Class</label><input id="grade" maxlength="12"></div><div><label>Section</label><input id="section" maxlength="6"></div>
+<div><label>Roll no.</label><input id="roll" maxlength="12"></div><div><label>Blood group</label><select id="blood"><option value="">—</option><option>A+</option><option>A−</option><option>B+</option><option>B−</option><option>AB+</option><option>AB−</option><option>O+</option><option>O−</option></select></div></div>
+<label>Parent's name</label><input id="parent" maxlength="30"><label>Address</label><input id="address" maxlength="70">
+<label>Layout</label><select id="layout"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select>
+<label>Photo</label><input id="photo" type="file" accept="image/*"><p style="margin-top:20px"><button class="btn dark" id="go">Open Print Page</button></p></div>
+<div style="display:flex;flex-direction:column;align-items:center"><p class="k" style="color:#a97812">Live preview</p>
+<div class="pv"><div class="h"><span>Mamta Public School<br><small>RONIJA · STUDENT ID</small></span><small>2026 – 27</small></div>
+<div class="b"><div class="ph"><img id="pi" hidden alt=""><span id="pp">👤</span></div><div style="min-width:0"><p class="l">Name</p><p class="nm" id="vn">Student Name</p>
+<p class="l">Class / Sec</p><p class="v" id="vg">—</p><p class="l">Roll · Blood</p><p class="v" id="vr">—</p><p class="l">Parent</p><p class="v" id="vp">—</p></div></div></div></div></div>
+<script>
+const $=id=>document.getElementById(id);let photoData='';
+function up(){$('vn').textContent=$('name').value||'Student Name';$('vg').textContent=($('grade').value||'—')+' · '+($('section').value||'—');
+$('vr').textContent=($('roll').value||'—')+' · '+($('blood').value||'—');$('vp').textContent=$('parent').value||'—'}
+['name','grade','section','roll','blood','parent'].forEach(i=>$(i).addEventListener('input',up));
+$('photo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{photoData=r.result;$('pi').src=photoData;$('pi').hidden=false;$('pp').hidden=true};r.readAsDataURL(f)};
+$('go').onclick=()=>{const y=new Date().getFullYear()+1;
+sessionStorage.setItem('rosewood-card-data',JSON.stringify({name:$('name').value||'Student Name',grade:$('grade').value||'—',roll:$('roll').value||'—',blood:$('blood').value||'—',section:$('section').value||'—',parent:$('parent').value||'—',address:$('address').value||'—',layout:$('layout').value,valid:'06 / '+y,photo:photoData}));
+location.href='print.html'};
+</script></body></html>

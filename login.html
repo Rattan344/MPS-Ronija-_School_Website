@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Login — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>body{min-height:100vh;display:grid;place-items:center;background:#070f20}
+.box{background:#fff;border-radius:16px;padding:36px;width:min(92vw,400px)}
+#cap{border-radius:8px;border:1px solid #b9c8e0;display:block}.row{display:flex;gap:10px;align-items:center}
+#err{color:#b91c1c;font-size:14px;min-height:20px;margin:12px 0 0}</style></head><body>
+<div class="box"><h1 style="font-size:28px">Admin Login</h1><p style="color:#243a5e;margin:6px 0 10px">Mamta Public School, Ronija</p>
+<form id="f" autocomplete="off">
+<label for="u">Login ID</label><input id="u" required>
+<label for="p">Password</label><input id="p" type="password" required>
+<label>Captcha</label><div class="row"><canvas id="cap" width="200" height="56"></canvas><button type="button" class="btn ghost" id="rf" style="color:#0e1b34;padding:9px 14px" title="New captcha">↻</button></div>
+<input id="c" placeholder="Type the characters above" style="margin-top:10px" required>
+<p id="err"></p><button class="btn dark" style="width:100%;margin-top:6px">Sign in</button></form>
+<p style="text-align:center;margin:18px 0 0"><a href="index.html" style="font-size:14px;color:#243a5e">← Back to website</a></p></div>
+<script>
+// CHANGE THESE before use. Client-side only; see note in chat.
+const ADMIN_ID='MPS@Admin#2026', ADMIN_PASS='Ron!ja$Gr8Noida*417';
+// const ADMIN_ID='55', ADMIN_PASS='55';
+let code='';
+function draw(){const cv=document.getElementById('cap'),x=cv.getContext('2d'),s='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+code='';for(let i=0;i<6;i++)code+=s[Math.floor(Math.random()*s.length)];
+x.fillStyle='#f2f5fb';x.fillRect(0,0,200,56);
+for(let i=0;i<7;i++){x.strokeStyle=`hsl(${Math.random()*360},50%,55%)`;x.lineWidth=1.5;x.beginPath();x.moveTo(Math.random()*200,Math.random()*56);x.bezierCurveTo(Math.random()*200,Math.random()*56,Math.random()*200,Math.random()*56,Math.random()*200,Math.random()*56);x.stroke()}
+for(let i=0;i<code.length;i++){x.save();x.translate(20+i*28,34+Math.random()*8-4);x.rotate((Math.random()-.5)*.7);x.font=`bold ${26+Math.random()*6}px Georgia`;x.fillStyle='#182746';x.fillText(code[i],0,0);x.restore()}
+for(let i=0;i<60;i++){x.fillStyle='rgba(14,27,52,.35)';x.fillRect(Math.random()*200,Math.random()*56,2,2)}}
+draw();document.getElementById('rf').onclick=draw;
+document.getElementById('f').onsubmit=e=>{e.preventDefault();const err=document.getElementById('err');
+if(document.getElementById('c').value.trim().toUpperCase()!==code){err.textContent='Captcha did not match. Try the new one.';draw();document.getElementById('c').value='';return}
+if(document.getElementById('u').value!==ADMIN_ID||document.getElementById('p').value!==ADMIN_PASS){err.textContent='Incorrect login ID or password.';draw();document.getElementById('c').value='';return}
+sessionStorage.setItem('mps-auth','1');location.href='dashboard.html'};
+</script></body></html>

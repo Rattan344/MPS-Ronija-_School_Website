@@ -1,0 +1,106 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Generate Admit Card — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="common.js"></script><script>requireAuth()</script>
+<style>
+.wrap2{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:32px;padding:30px 24px;max-width:1300px;margin:auto}
+@media(max-width:1000px){.wrap2{grid-template-columns:1fr}}
+.stage{overflow-x:auto}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid #b9c8e0;border-radius:8px;overflow:hidden}
+.seg label{margin:0;padding:10px;text-align:center;cursor:pointer;font-size:12px;background:#fff}
+.seg input{display:none}.seg input:checked+span{font-weight:700}.seg label:has(input:checked){background:var(--n9);color:#fff}
+.rows input{margin-bottom:6px}
+/* ---------- A4 sheet ---------- */
+.a4{width:210mm;height:297mm;overflow:hidden;background:#fff;color:#0e1b34;position:relative;padding:9mm;box-shadow:0 20px 50px rgba(14,27,52,.25);margin:auto}
+.a4,.a4 h1,.a4 h2,.a4 h3{font-family:'Inter Tight','Noto Sans Devanagari',sans-serif}.a4 h1,.a4 h2{font-family:Fraunces,'Noto Sans Devanagari',serif}.hi{font-family:'Noto Sans Devanagari',sans-serif}.frame{height:100%;border:1.2mm double #182746;display:flex;flex-direction:column;position:relative}
+.hd{background:#070f20;color:#fff;display:flex;align-items:center;gap:6mm;padding:5mm 7mm;border-bottom:1.2mm solid #dcae2e}
+.logo-box{width:24mm;height:24mm;flex:none;background:#fff;border-radius:50%;display:grid;place-items:center;overflow:hidden;border:.8mm solid #dcae2e}
+.logo-box img{width:100%;height:100%;object-fit:contain}.logo-box b{font:700 12mm Fraunces,serif;color:#070f20}
+.hd .t{text-align:center;flex:1}.hd h1{font-size:8.4mm;letter-spacing:.04em}.hd p{margin:1.2mm 0 0;font-size:3.1mm;color:#f2dc94;line-height:1.35}
+.title{text-align:center;margin:5mm 0 3mm}.title h2{font-size:6mm;letter-spacing:.14em;color:#182746}
+.title .ex{display:inline-block;margin-top:1.5mm;padding:1mm 5mm;border:.3mm solid #182746;border-radius:99px;font-size:3.6mm;font-weight:600}
+.bd{padding:0 8mm;flex:1;display:flex;flex-direction:column}
+.info{display:flex;gap:6mm;align-items:flex-start;margin-top:3mm}
+.meta{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:3.5mm 6mm;font-size:3.6mm}
+.meta div{border-bottom:.25mm dotted #5b7fae;padding-bottom:1mm}.meta small{display:block;font-size:2.4mm;letter-spacing:.14em;text-transform:uppercase;color:#2f4b78}.meta b{font-size:4mm}
+.photo{width:32mm;height:40mm;border:.4mm solid #182746;display:grid;place-items:center;text-align:center;font-size:2.8mm;color:#5b7fae;overflow:hidden;flex:none}
+.photo img{width:100%;height:100%;object-fit:cover}
+table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));font-size:calc(3.6mm*var(--k,1))}
+.tt th{background:#182746;color:#fff;font-weight:600;letter-spacing:.08em;font-size:3mm;text-transform:uppercase}
+.tt th,.tt td{border:.25mm solid #8ba5c9;padding:calc(2mm*var(--k,1)) 3mm;text-align:left;line-height:1.25}.tt tbody tr:nth-child(even){background:#f2f5fb}
+.gd{margin-top:calc(5mm*var(--k,1));border:.3mm solid #b9c8e0;background:#fdf8ec;padding:calc(3mm*var(--k,1)) 5mm}.gd h3{font:700 3.6mm 'Inter Tight';letter-spacing:.12em;text-transform:uppercase;color:#875a11;margin-bottom:1.5mm}
+.gd ol{margin:0;padding-left:5mm;font-size:calc(3.1mm*var(--k,1));line-height:1.4}
+.ft{display:flex;justify-content:space-between;align-items:flex-end;padding:0 8mm 4mm;margin-top:auto;gap:5mm}
+.sg{text-align:center;font-size:3mm;width:42mm;border-top:.3mm solid #000;padding-top:1mm}
+.vq{text-align:center;font-size:2.4mm;color:#243a5e}.vq div{display:inline-block;padding:1mm;background:#fff;border:.3mm solid #182746}.vq p{margin:1mm 0 0;font-family:monospace}
+.foot{background:#070f20;color:#f2dc94;text-align:center;font-size:2.8mm;padding:2.5mm 4mm;letter-spacing:.04em}
+@page{size:A4;margin:0}
+@media print{html,body{height:297mm;overflow:hidden}body{background:#fff}.a4{height:296.5mm}.wrap2{display:block;padding:0}.stage{overflow:visible}.a4{box-shadow:none;margin:0}}
+</style></head><body>
+<div class="top noprint"><div class="wrap"><b class="serif">Generate Admit Card</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
+<div class="wrap2">
+<div class="card noprint"><h3>Details</h3>
+<label>Exam name / परीक्षा का नाम</label><select id="exam"><option value="Annual Examination|वार्षिक परीक्षा">Annual Examination — वार्षिक परीक्षा</option><option value="Half-Yearly Examination|अर्धवार्षिक परीक्षा">Half-Yearly — अर्धवार्षिक परीक्षा</option><option value="Mid-Term Examination|मध्यावधि परीक्षा">Mid-Term — मध्यावधि परीक्षा</option><option value="Unit Test|इकाई परीक्षा">Unit Test — इकाई परीक्षा</option><option value="Pre-Board Examination|प्री-बोर्ड परीक्षा">Pre-Board — प्री-बोर्ड परीक्षा</option><option value="custom">Custom…</option></select>
+<div id="cbox" hidden><label>Custom name (English)</label><input id="cen"><label>Custom name (हिन्दी)</label><input id="chi" placeholder="जैसे: तिमाही परीक्षा"></div>
+<label>Session / सत्र</label><input id="sess" value="2026–27">
+<label>Student name</label><input id="name"><label>Class &amp; section</label><input id="cls"><label>Roll no.</label><input id="roll"><label>Father's name</label><input id="father"><label>छात्र का नाम (Hindi, optional)</label><input id="nameh" placeholder="देवनागरी में नाम"><label>पिता का नाम (Hindi, optional)</label><input id="fatherh">
+<label>Photo option</label>
+<div class="seg"><label><input type="radio" name="pm" value="upload" checked><span>Upload photo</span></label><label><input type="radio" name="pm" value="affix"><span>Affix photo</span></label></div>
+<div id="upbox"><label>Select photo</label><input id="photo" type="file" accept="image/*"></div>
+<label>Timetable (date · subject · time)</label><div class="rows" id="rows"></div>
+<p><button class="btn ghost" style="color:#0e1b34" id="add">+ Add row</button></p>
+<label>Verification serial</label><div style="display:flex;gap:8px"><input id="serial" readonly><button class="btn ghost" style="color:#0e1b34" id="newser" title="New random serial">↻</button></div>
+<p style="font-size:12px;color:#5b7fae;margin:6px 0 16px">Each card gets a random serial and a QR code. Scanning it opens the verification page.</p>
+<button class="btn dark" onclick="print()">Print A4</button> <a class="btn" id="testlink" target="_blank" rel="noopener">Test verification page ↗</a><p id="urltxt" style="font-size:11px;color:#5b7fae;word-break:break-all;margin-top:12px"></p></div>
+
+<div class="stage"><div class="a4" id="sheet"><div class="frame">
+<div class="hd"><div class="logo-box"><img src="logo.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'M'}))"></div>
+<div class="t"><h1 class="serif">MAMTA PUBLIC SCHOOL</h1><p class="hi" style="font-size:4mm;font-weight:600">ममता पब्लिक स्कूल</p><p>Ronija (Gautam Buddh Nagar), Greater Noida<br>Uttar Pradesh, India</p></div><div style="width:24mm"></div></div>
+<div class="title"><h2 class="serif">ADMIT CARD &nbsp;|&nbsp; <span class="hi">प्रवेश पत्र</span></h2><span class="ex hi" id="vx">—</span></div>
+<div class="bd"><div class="info"><div class="meta">
+<div><small>Student name / <span class="hi">छात्र का नाम</span></small><b id="vn">—</b><br><b class="hi" id="vnh"></b></div><div><small>Roll number / <span class="hi">अनुक्रमांक</span></small><b id="vr">—</b></div>
+<div><small>Class &amp; section / <span class="hi">कक्षा व अनुभाग</span></small><b id="vc">—</b></div><div><small>Father's name / <span class="hi">पिता का नाम</span></small><b id="vf">—</b><br><b class="hi" id="vfh"></b></div></div>
+<div class="photo" id="ph">Affix recent<br>passport-size<br>photograph</div></div>
+<table class="tt"><thead><tr><th>Date / <span class="hi">दिनांक</span></th><th>Subject / <span class="hi">विषय</span></th><th>Time / <span class="hi">समय</span></th></tr></thead><tbody id="tb"></tbody></table>
+<div class="gd"><h3>परीक्षा संबंधी निर्देश <span style="font-weight:500">/ Instructions</span></h3><ol class="hi">
+<li>प्रत्येक परीक्षा में यह प्रवेश पत्र साथ लाना अनिवार्य है; इसके बिना प्रवेश नहीं मिलेगा।</li>
+<li>परीक्षा आरंभ होने से 15 मिनट पहले परीक्षा कक्ष में पहुँचें।</li>
+<li>विद्यालय की निर्धारित वर्दी पहनें और स्कूल पहचान पत्र साथ रखें।</li>
+<li>केवल नीले/काले पेन, पेंसिल, रबर, स्केल आदि अनुमत सामग्री ही लाएँ।</li>
+<li>मोबाइल फोन, स्मार्ट घड़ी तथा किसी भी इलेक्ट्रॉनिक उपकरण का प्रयोग पूर्णतः वर्जित है।</li>
+<li>परीक्षा के दौरान आपस में बातचीत न करें और न ही सामग्री का आदान-प्रदान करें।</li>
+<li>अनुचित साधनों का प्रयोग करने पर उत्तर-पुस्तिका निरस्त कर अनुशासनात्मक कार्रवाई की जाएगी।</li>
+<li>निर्धारित समय से पहले कक्ष न छोड़ें। परिणाम घोषित होने तक इस पत्र को सुरक्षित रखें।</li></ol></div></div>
+<div class="ft"><div class="sg">Class Teacher</div><div class="vq"><div id="qr"></div><p id="vs">—</p>Scan to verify</div><div class="sg">Principal</div></div>
+<div class="foot">MAMTA PUBLIC SCHOOL · RONIJA (GAUTAM BUDDH NAGAR), GREATER NOIDA, UTTAR PRADESH</div>
+</div></div></div></div>
+<datalist id="subj"><option value="Hindi / हिंदी"><option value="English / अंग्रेज़ी"><option value="Mathematics / गणित"><option value="Science / विज्ञान"><option value="Social Science / सामाजिक विज्ञान"><option value="Sanskrit / संस्कृत"><option value="Computer / कंप्यूटर"><option value="General Knowledge / सामान्य ज्ञान"><option value="Physics / भौतिकी"><option value="Chemistry / रसायन विज्ञान"><option value="Biology / जीव विज्ञान"><option value="EVS / पर्यावरण अध्ययन"></datalist>
+<script>
+const $=id=>document.getElementById(id),SECRET='mps-ronija-change-me-2026'; // keep identical in verify.html
+const h=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}
+a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);
+return ((b>>>0).toString(16).padStart(8,'0')+(a>>>0).toString(16).padStart(8,'0')).toUpperCase()};
+function newSerial(){const s='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let r='';const v=crypto.getRandomValues(new Uint8Array(8));v.forEach(x=>r+=s[x%s.length]);$('serial').value='MPS-'+r;up()}
+function row(){if($('rows').children.length>=12)return;const r=document.createElement('div');r.style.cssText='display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px';
+r.innerHTML='<input placeholder="12 Mar 2027"><input placeholder="Maths" list="subj"><input placeholder="9:00–12:00">';r.querySelectorAll('input').forEach(i=>i.oninput=up);$('rows').appendChild(r)}
+let qr;
+function up(){const cu=$('exam').value==='custom';$('cbox').hidden=!cu;const pr=cu?[$('cen').value||'Examination',$('chi').value]:$('exam').value.split('|');
+const d={n:$('name').value,r:$('roll').value,c:$('cls').value,e:(pr[0]+' '+$('sess').value).trim(),id:$('serial').value};
+$('vx').textContent=(pr[1]?pr[1]+' / ':'')+d.e;$('vnh').textContent=$('nameh').value;$('vfh').textContent=$('fatherh').value;$('vn').textContent=d.n||'—';$('vr').textContent=d.r||'—';$('vc').textContent=d.c||'—';$('vf').textContent=$('father').value||'—';$('vs').textContent=d.id;
+$('tb').replaceChildren(...[...$('rows').children].filter(r=>[...r.children].some(i=>i.value)).map(r=>{const tr=document.createElement('tr');[...r.children].forEach(i=>{const td=document.createElement('td');td.textContent=i.value;tr.appendChild(td)});return tr}));
+const p=btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const sig=h(p+SECRET),url=new URL('verify.html',location.href);url.searchParams.set('d',p);url.searchParams.set('s',sig);
+$('testlink').href=url.href;$('urltxt').textContent='QR opens: '+url.href;$('add').disabled=$('rows').children.length>=12;$('add').textContent=$('rows').children.length>=12?'Maximum 12 rows':'+ Add row';$('qr').innerHTML='';new QRCode($('qr'),{text:url.href,width:80,height:80,correctLevel:QRCode.CorrectLevel.L});fit()}
+// Auto-shrink timetable/instructions spacing so everything stays on ONE A4 page (up to 12 exams)
+function fit(){const sh=$('sheet'),fr=sh.firstElementChild;let k=1;sh.style.setProperty('--k',k);
+while(fr.scrollHeight>fr.clientHeight+1&&k>0.5){k=Math.round((k-0.04)*100)/100;sh.style.setProperty('--k',k)}}
+window.addEventListener('beforeprint',fit);
+['name','cls','roll','father','nameh','fatherh','sess','cen','chi'].forEach(i=>$(i).oninput=up);$('exam').onchange=up;$('add').onclick=()=>{row();up()};$('newser').onclick=newSerial;
+function photoMode(){const up_=document.querySelector('[name=pm]:checked').value==='upload';$('upbox').hidden=!up_;
+const f=$('photo').files[0],ph=$('ph');
+if(up_&&f){ph.innerHTML='';const i=new Image();i.src=URL.createObjectURL(f);ph.appendChild(i)}else ph.innerHTML='Affix recent<br>passport-size<br>photograph'}
+document.querySelectorAll('[name=pm]').forEach(r=>r.onchange=photoMode);$('photo').onchange=photoMode;
+for(let i=0;i<4;i++)row();newSerial();
+</script></body></html>

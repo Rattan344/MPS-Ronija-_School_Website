@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MPS Ronija — Official Site & ID Card Studio</title>
+
+<!-- Tailwind CSS via CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Fonts: Fraunces (serif display) + Inter Tight (sans body) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+
+<!-- Font Awesome for icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: {
+            50:  '#f2f5fb',
+            100: '#dfe6f2',
+            200: '#b9c8e0',
+            300: '#8ba5c9',
+            400: '#5b7fae',
+            500: '#3d6094',
+            600: '#2f4b78',
+            700: '#243a5e',
+            800: '#182746',
+            900: '#0e1b34',
+            950: '#070f20'
+          },
+          gold: {
+            50:  '#fdf8ec',
+            100: '#f8ecc4',
+            200: '#f2dc94',
+            300: '#e9c65a',
+            400: '#dcae2e',
+            500: '#c69418',
+            600: '#a97812',
+            700: '#875a11',
+            800: '#6d4813',
+            900: '#5b3c13'
+          }
+        },
+        fontFamily: {
+          display: ['Fraunces', 'ui-serif', 'Georgia', 'serif'],
+          sans: ['"Inter Tight"', 'ui-sans-serif', 'system-ui'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter Tight', system-ui, sans-serif;
+    background: #f7f5f0;
+    color: #0e1b34;
+  }
+
+  /* Give the on-screen site a more spacious, readable presentation.
+     Print output remains at the exact CR80 dimensions below. */
+  @media screen {
+    body {
+      zoom: 1.08;
+    }
+  }
+
+  /* --------------------------------------------
+     CR80 CARD PROPORTIONS
+     Real card: 85.6mm × 53.98mm  (aspect ≈ 1.586)
+     Screen preview scales up while keeping ratio.
+  ----------------------------------------------- */
+  .cr80 {
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 85.6 / 53.98;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    box-shadow:
+      0 30px 60px -20px rgba(14,27,52,.45),
+      0 12px 24px -12px rgba(14,27,52,.35),
+      inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .cr80.vertical {
+    max-width: 320px;
+    aspect-ratio: 53.98 / 85.6;
+  }
+  .cr80.vertical .absolute > .flex-1 { flex-direction: column; }
+  .cr80.vertical .absolute > .flex-1 > div:first-child { width: 42%; }
+
+  /* Subtle guilloché texture on the card */
+  .card-pattern {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(220,174,46,.20) 0, transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(59,127,174,.25) 0, transparent 45%),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.035) 0 2px, transparent 2px 6px);
+  }
+
+  .grain::after {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.6'/></svg>");
+    opacity: .35;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+
+  /* Barcode mock */
+  .barcode {
+    background-image: repeating-linear-gradient(
+      to right,
+      #0e1b34 0 2px, transparent 2px 4px,
+      #0e1b34 4px 5px, transparent 5px 9px,
+      #0e1b34 9px 12px, transparent 12px 14px
+    );
+  }
+
+  /* QR mock — decorative CSS grid */
+  .qr {
+    background:
+      linear-gradient(#0e1b34,#0e1b34) 0 0/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 12px 0/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 24px 6px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 6px 12px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 18px 12px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 30px 12px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 0 18px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 24px 18px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 6px 24px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 18px 24px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 30px 24px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 0 30px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 12px 30px/6px 6px no-repeat,
+      linear-gradient(#0e1b34,#0e1b34) 24px 30px/6px 6px no-repeat,
+      #fff;
+    /* Positioning frame corners */
+    box-shadow:
+      inset 0 0 0 2px #0e1b34,
+      inset 6px 6px 0 0 #fff,
+      inset -6px 6px 0 0 #fff,
+      inset 6px -6px 0 0 #fff;
+  }
+
+  /* Micro entrance animation */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .rise { animation: rise .7s cubic-bezier(.2,.7,.2,1) both; }
+  .rise-1 { animation-delay: .05s; }
+  .rise-2 { animation-delay: .15s; }
+  .rise-3 { animation-delay: .25s; }
+  .rise-4 { animation-delay: .35s; }
+
+  /* Focus rings */
+  input:focus, select:focus, button:focus-visible {
+    outline: 2px solid #dcae2e;
+    outline-offset: 2px;
+  }
+
+  /* File input styling */
+  input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    border: 0;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: #0e1b34;
+    color: #f8ecc4;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .2s ease;
+  }
+  input[type="file"]::file-selector-button:hover { background: #182746; }
+
+  /* --------------------------------------------
+     PRINT STYLES — CR80 exact size
+  ----------------------------------------------- */
+  @media print {
+    @page {
+      size: 85.6mm 53.98mm;
+      margin: 0;
+    }
+
+    html, body {
+      background: #fff !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    /* Hide everything by default */
+    body * { visibility: hidden !important; }
+
+    /* Show only the printable card */
+    #printable-card, #printable-card * {
+      visibility: visible !important;
+    }
+
+    #printable-card {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 85.6mm !important;
+      height: 53.98mm !important;
+      max-width: none !important;
+      aspect-ratio: auto !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      page-break-after: avoid;
+    }
+
+    #printable-card::after { display: none !important; }
+  }
+</style>
+</head>
+
+<body class="antialiased">
+
+<!-- ============================================================
+     NAVIGATION
+============================================================ -->
+<header id="site-nav" class="sticky top-0 z-40 bg-navy-950/95 backdrop-blur border-b border-navy-800/60">
+  <nav class="max-w-7xl mx-auto px-6 lg:px-10 py-4 flex items-center justify-between">
+    <a href="#home" class="flex items-center gap-3 group" data-testid="brand-link">
+      <span class="w-9 h-9 rounded-full bg-gold-400 text-navy-950 grid place-items-center font-display font-bold text-lg shadow-inner shadow-gold-600/40">R</span>
+      <span class="font-display text-xl md:text-2xl text-white tracking-tight">
+        MPS <span class="text-gold-300">Ronija</span>
+      </span>
+    </a>
+
+    <ul class="hidden md:flex items-center gap-8 text-sm font-medium text-navy-100">
+      <li><a href="#home"     class="hover:text-gold-300 transition-colors" data-testid="nav-home">Home</a></li>
+      <li><a href="#academics" class="hover:text-gold-300 transition-colors" data-testid="nav-academics">Academics</a></li>
+      <li><a href="#faculty"  class="hover:text-gold-300 transition-colors" data-testid="nav-faculty">Faculty</a></li>
+      <li>
+        <a href="#studio" class="inline-flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-navy-950 px-4 py-2 rounded-full transition-colors" data-testid="nav-studio">
+          <i class="fa-regular fa-id-card"></i> ID Card Studio
+        </a>
+      </li>
+    </ul>
+
+    <button id="mobile-toggle" class="md:hidden text-white text-xl" aria-label="Open menu" data-testid="mobile-menu-btn">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+  </nav>
+
+  <div id="mobile-menu" class="md:hidden hidden border-t border-navy-800 bg-navy-900 px-6 py-4 space-y-3 text-navy-100">
+    <a href="#home"      class="block hover:text-gold-300">Home</a>
+    <a href="#academics" class="block hover:text-gold-300">Academics</a>
+    <a href="#faculty"   class="block hover:text-gold-300">Faculty</a>
+    <a href="#studio"    class="block hover:text-gold-300">ID Card Studio</a>
+  </div>
+</header>
+
+<!-- ============================================================
+     HOME / HERO
+============================================================ -->
+<section id="home" class="relative overflow-hidden bg-navy-950 text-white">
+  <div class="absolute inset-0 opacity-30 pointer-events-none"
+       style="background-image: radial-gradient(circle at 15% 20%, rgba(220,174,46,.35), transparent 40%),
+                                radial-gradient(circle at 85% 80%, rgba(59,127,174,.35), transparent 45%);"></div>
+
+  <div class="relative max-w-7xl mx-auto px-6 lg:px-10 py-20 lg:py-28 grid lg:grid-cols-12 gap-12 items-center">
+    <div class="lg:col-span-7 rise rise-1">
+      <p class="uppercase tracking-[0.35em] text-gold-300 text-xs mb-6 font-semibold">Est. 1974 · Independent Day School</p>
+      <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl leading-[1.05] text-white">
+        A place where <em class="text-gold-300 not-italic italic-serif">curiosity</em> is the curriculum.
+      </h1>
+      <p class="mt-6 text-base md:text-lg text-navy-100 max-w-xl">
+        MPS Ronija nurtures scholars, athletes, and artists from Kindergarten through Grade 12
+        — with rigorous academics and a warm, tight-knit community.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="#studio" class="inline-flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-navy-950 font-semibold px-6 py-3 rounded-full transition-colors" data-testid="hero-cta-studio">
+          <i class="fa-regular fa-id-card"></i> Open ID Card Studio
+        </a>
+        <a href="#academics" class="inline-flex items-center gap-2 border border-navy-300/40 hover:border-gold-300 text-white px-6 py-3 rounded-full transition-colors">
+          Explore Academics <i class="fa-solid fa-arrow-right text-xs"></i>
+        </a>
+      </div>
+    </div>
+
+    <div class="lg:col-span-5 rise rise-3">
+      <div class="relative">
+        <div class="absolute -inset-6 bg-gold-400/10 rounded-3xl blur-2xl"></div>
+        <div class="relative rounded-3xl border border-navy-800 bg-navy-900/60 p-6 backdrop-blur">
+          <div class="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p class="font-display text-4xl text-gold-300">50<span class="text-navy-200 text-2xl">+</span></p>
+              <p class="text-xs uppercase tracking-widest text-navy-200 mt-1">Years</p>
+            </div>
+            <div>
+              <p class="font-display text-4xl text-gold-300">1:9</p>
+              <p class="text-xs uppercase tracking-widest text-navy-200 mt-1">Ratio</p>
+            </div>
+            <div>
+              <p class="font-display text-4xl text-gold-300">120</p>
+              <p class="text-xs uppercase tracking-widest text-navy-200 mt-1">Faculty</p>
+            </div>
+          </div>
+          <div class="h-px bg-navy-800 my-6"></div>
+          <blockquote class="font-display italic text-lg text-navy-100 leading-relaxed">
+            “Non scholae, sed vitae discimus — we learn not for school, but for life.”
+          </blockquote>
+          <p class="mt-3 text-xs uppercase tracking-widest text-gold-300">School Motto</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ACADEMICS
+============================================================ -->
+<section id="academics" class="max-w-7xl mx-auto px-6 lg:px-10 py-20">
+  <div class="flex items-end justify-between flex-wrap gap-6 mb-12">
+    <div>
+      <p class="uppercase tracking-[0.35em] text-gold-600 text-xs mb-3 font-semibold">Academics</p>
+      <h2 class="font-display text-3xl md:text-4xl text-navy-900 max-w-2xl">A curriculum designed to stretch — never strain.</h2>
+    </div>
+    <a href="#" class="text-navy-700 hover:text-gold-600 text-sm font-medium">View full catalog <i class="fa-solid fa-arrow-right text-xs ml-1"></i></a>
+  </div>
+
+  <div class="grid md:grid-cols-3 gap-6">
+    <article class="p-8 rounded-2xl bg-white border border-navy-100 hover:border-gold-300 transition-colors">
+      <i class="fa-solid fa-flask text-2xl text-gold-500"></i>
+      <h3 class="font-display text-xl text-navy-900 mt-4">Sciences</h3>
+      <p class="text-sm text-navy-700 mt-2 leading-relaxed">Wet labs from Grade 5. AP Bio, Chem, Physics-C, and student-led research at our Milner Institute.</p>
+    </article>
+    <article class="p-8 rounded-2xl bg-white border border-navy-100 hover:border-gold-300 transition-colors">
+      <i class="fa-solid fa-book-open text-2xl text-gold-500"></i>
+      <h3 class="font-display text-xl text-navy-900 mt-4">Humanities</h3>
+      <p class="text-sm text-navy-700 mt-2 leading-relaxed">Seminar-style English & History, Latin from Grade 6, and a signature Senior Thesis program.</p>
+    </article>
+    <article class="p-8 rounded-2xl bg-white border border-navy-100 hover:border-gold-300 transition-colors">
+      <i class="fa-solid fa-palette text-2xl text-gold-500"></i>
+      <h3 class="font-display text-xl text-navy-900 mt-4">Arts & Design</h3>
+      <p class="text-sm text-navy-700 mt-2 leading-relaxed">Studio arts, orchestra, jazz ensemble, and a full black-box theatre with two mainstage productions.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ============================================================
+     FACULTY
+============================================================ -->
+<section id="faculty" class="bg-white border-y border-navy-100">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-20">
+    <div class="mb-12">
+      <p class="uppercase tracking-[0.35em] text-gold-600 text-xs mb-3 font-semibold">Faculty</p>
+      <h2 class="font-display text-3xl md:text-4xl text-navy-900 max-w-2xl">Teachers who stay — and students who thrive.</h2>
+    </div>
+
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <!-- Faculty cards -->
+      <div class="rounded-2xl overflow-hidden border border-navy-100 group">
+        <div class="aspect-[4/5] bg-navy-100 grid place-items-center text-6xl text-navy-300"><i class="fa-solid fa-user-tie"></i></div>
+        <div class="p-5">
+          <h3 class="font-display text-lg text-navy-900">Dr. Amara Whitfield</h3>
+          <p class="text-xs uppercase tracking-widest text-gold-600 mt-1">Head of School</p>
+        </div>
+      </div>
+      <div class="rounded-2xl overflow-hidden border border-navy-100 group">
+        <div class="aspect-[4/5] bg-navy-100 grid place-items-center text-6xl text-navy-300"><i class="fa-solid fa-user-graduate"></i></div>
+        <div class="p-5">
+          <h3 class="font-display text-lg text-navy-900">Prof. Ito Nakamura</h3>
+          <p class="text-xs uppercase tracking-widest text-gold-600 mt-1">Chair, Sciences</p>
+        </div>
+      </div>
+      <div class="rounded-2xl overflow-hidden border border-navy-100 group">
+        <div class="aspect-[4/5] bg-navy-100 grid place-items-center text-6xl text-navy-300"><i class="fa-solid fa-user"></i></div>
+        <div class="p-5">
+          <h3 class="font-display text-lg text-navy-900">Ms. Priya Raghavan</h3>
+          <p class="text-xs uppercase tracking-widest text-gold-600 mt-1">Dean of Students</p>
+        </div>
+      </div>
+      <div class="rounded-2xl overflow-hidden border border-navy-100 group">
+        <div class="aspect-[4/5] bg-navy-100 grid place-items-center text-6xl text-navy-300"><i class="fa-solid fa-chalkboard-user"></i></div>
+        <div class="p-5">
+          <h3 class="font-display text-lg text-navy-900">Mr. Owen Delacroix</h3>
+          <p class="text-xs uppercase tracking-widest text-gold-600 mt-1">Director, Arts</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     ID CARD STUDIO
+============================================================ -->
+<section id="studio" class="bg-navy-950 text-white">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-20 lg:py-24">
+
+    <div class="mb-12 flex items-end justify-between flex-wrap gap-6">
+      <div>
+        <p class="uppercase tracking-[0.35em] text-gold-300 text-xs mb-3 font-semibold">ID Card Studio</p>
+        <h2 class="font-display text-3xl md:text-4xl text-white max-w-2xl">Design a print-ready PVC ID card in seconds.</h2>
+        <p class="text-navy-100 mt-3 max-w-xl text-sm md:text-base">Type on the left, watch it appear on the right. Print at exact CR80 dimensions (85.6 × 53.98 mm).</p>
+      </div>
+      <span class="hidden md:inline-flex items-center gap-2 text-xs uppercase tracking-widest text-gold-300 border border-gold-400/40 rounded-full px-4 py-2">
+        <i class="fa-solid fa-circle text-[6px]"></i> Live Preview
+      </span>
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
+
+      <!-- ============ FORM ============ -->
+      <div id="studio-form" class="bg-navy-900/60 border border-navy-800 rounded-2xl p-6 md:p-8 rise rise-1">
+        <h3 class="font-display text-xl text-white mb-6 flex items-center gap-3">
+          <span class="w-8 h-8 grid place-items-center rounded-full bg-gold-400 text-navy-950 text-sm font-bold">1</span>
+          Student details
+        </h3>
+
+        <div class="space-y-5">
+          <div>
+            <label for="f-name" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Student Full Name</label>
+            <input id="f-name" type="text" maxlength="34" placeholder="e.g. Ada Lovelace"
+              class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white placeholder:text-navy-400"
+              data-testid="input-name" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="f-grade" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Grade / Class</label>
+              <input id="f-grade" type="text" maxlength="12" placeholder="Grade 10 · Sec A"
+                class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white placeholder:text-navy-400"
+                data-testid="input-grade" />
+            </div>
+            <div>
+              <label for="f-roll" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Roll Number</label>
+              <input id="f-roll" type="text" maxlength="12" placeholder="R-2026-014"
+                class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white placeholder:text-navy-400"
+                data-testid="input-roll" />
+            </div>
+          </div>
+
+          <div>
+            <label for="f-blood" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Blood Group</label>
+            <select id="f-blood"
+              class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white"
+              data-testid="input-blood">
+              <option value="">Select…</option>
+              <option>A+</option><option>A−</option>
+              <option>B+</option><option>B−</option>
+              <option>AB+</option><option>AB−</option>
+              <option>O+</option><option>O−</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Card Layout</label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="flex items-center gap-2 rounded-lg border border-navy-700 bg-navy-950 px-3 py-3 text-sm cursor-pointer">
+                <input type="radio" name="card-layout" value="horizontal" checked /> Horizontal
+              </label>
+              <label class="flex items-center gap-2 rounded-lg border border-navy-700 bg-navy-950 px-3 py-3 text-sm cursor-pointer">
+                <input type="radio" name="card-layout" value="vertical" /> Vertical
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label for="f-section" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Class Section</label>
+              <input id="f-section" type="text" maxlength="12" placeholder="A"
+                class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white placeholder:text-navy-400" />
+            </div>
+            <div>
+              <label for="f-parent" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Parent's Name</label>
+              <input id="f-parent" type="text" maxlength="30" placeholder="Parent / Guardian"
+                class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white placeholder:text-navy-400" />
+            </div>
+          </div>
+          <div>
+            <label for="f-address" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Address</label>
+            <input id="f-address" type="text" maxlength="70" placeholder="Student address"
+              class="w-full bg-navy-950 border border-navy-700 rounded-lg px-4 py-3 text-white placeholder:text-navy-400" />
+          </div>
+
+          <div>
+            <label for="f-photo" class="block text-xs uppercase tracking-widest text-navy-200 mb-2">Profile Photo</label>
+            <input id="f-photo" type="file" accept="image/*"
+              class="w-full text-sm text-navy-100 bg-navy-950 border border-navy-700 rounded-lg py-2 px-3 cursor-pointer"
+              data-testid="input-photo" />
+            <p class="text-xs text-navy-300 mt-2">Recommended: 600×750 px, plain background.</p>
+          </div>
+
+          <div class="pt-3 flex flex-wrap gap-3">
+            <button id="btn-print" type="button"
+              class="inline-flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-navy-950 font-semibold px-6 py-3 rounded-full transition-colors"
+              data-testid="btn-print">
+              <i class="fa-solid fa-print"></i> Open Print Page
+            </button>
+            <button id="btn-reset" type="button"
+              class="inline-flex items-center gap-2 border border-navy-600 hover:border-gold-300 text-navy-100 hover:text-gold-300 px-6 py-3 rounded-full transition-colors"
+              data-testid="btn-reset">
+              <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ PREVIEW ============ -->
+      <div class="flex flex-col items-center rise rise-2">
+        <p class="text-xs uppercase tracking-widest text-gold-300 mb-4">Live Preview · CR80</p>
+
+        <!-- PRINTABLE ID CARD -->
+        <div id="printable-card" class="cr80 grain bg-white text-navy-950 card-pattern" data-testid="id-card">
+          <!-- Card interior — using absolute regions for consistent proportional layout -->
+          <div class="absolute inset-0 flex flex-col"
+               style="background: linear-gradient(135deg, #ffffff 0%, #fdf8ec 55%, #f2dc94 100%);">
+
+            <!-- Top navy band with school name -->
+            <div class="flex items-center justify-between px-4 py-2 bg-navy-950 text-white">
+              <div class="flex items-center gap-2">
+                <span class="w-6 h-6 rounded-full bg-gold-400 text-navy-950 grid place-items-center font-display font-bold text-xs">R</span>
+                <div class="leading-tight">
+                  <p class="font-display text-[13px] tracking-wide">MPS Ronija</p>
+                  <p class="text-[8px] uppercase tracking-[0.25em] text-gold-300">Est. 1974 · Student ID</p>
+                </div>
+              </div>
+              <p class="text-[8px] uppercase tracking-[0.25em] text-gold-300">2025 – 26</p>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 flex px-4 py-3 gap-3">
+              <!-- Photo -->
+              <div class="shrink-0 w-[28%] aspect-[4/5] rounded-md overflow-hidden border-2 border-gold-400 bg-navy-100 grid place-items-center">
+                <img id="pv-photo" alt="" class="w-full h-full object-cover hidden" data-testid="preview-photo" />
+                <i id="pv-photo-placeholder" class="fa-solid fa-user text-3xl text-navy-300"></i>
+              </div>
+
+              <!-- Details -->
+              <div class="flex-1 min-w-0 flex flex-col">
+                <p class="text-[8px] uppercase tracking-[0.25em] text-navy-600">Name</p>
+                <p id="pv-name" class="font-display text-[15px] leading-tight text-navy-950 truncate" data-testid="preview-name">
+                  Ada Lovelace
+                </p>
+
+                <div class="grid grid-cols-2 gap-x-3 gap-y-1 mt-2">
+                  <div>
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Grade</p>
+                    <p id="pv-grade" class="text-[10px] font-semibold text-navy-900" data-testid="preview-grade">Grade 10</p>
+                  </div>
+                  <div>
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Roll No.</p>
+                    <p id="pv-roll" class="text-[10px] font-mono font-semibold text-navy-900" data-testid="preview-roll">R-2026-014</p>
+                  </div>
+                  <div>
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Section</p>
+                    <p id="pv-section" class="text-[10px] font-semibold text-navy-900">A</p>
+                  </div>
+                  <div>
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Parent</p>
+                    <p id="pv-parent" class="text-[10px] font-semibold text-navy-900 truncate">Parent / Guardian</p>
+                  </div>
+                  <div class="col-span-2">
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Address</p>
+                    <p id="pv-address" class="text-[9px] font-semibold text-navy-900 truncate">Student address</p>
+                  </div>
+                  <div class="col-span-2">
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Blood</p>
+                    <p id="pv-blood" class="text-[10px] font-bold text-red-700" data-testid="preview-blood">—</p>
+                  </div>
+                  <div>
+                    <p class="text-[8px] uppercase tracking-[0.2em] text-navy-600">Valid Thru</p>
+                    <p id="pv-valid" class="text-[10px] font-semibold text-navy-900" data-testid="preview-valid">06 / 2026</p>
+                  </div>
+                </div>
+
+                <!-- Signature line -->
+                <div class="mt-auto pt-2">
+                  <div class="h-[1px] bg-navy-900/40"></div>
+                  <p class="text-[7px] uppercase tracking-[0.25em] text-navy-600 mt-0.5">Principal's Signature</p>
+                </div>
+              </div>
+
+              <!-- QR mock -->
+              <div class="shrink-0 flex flex-col items-end justify-between">
+                <div id="pv-qr" class="qr" style="width:36px;height:36px;background-color:#fff;"></div>
+                <p class="text-[7px] font-mono text-navy-700 mt-1" id="pv-qrid">#RA-014</p>
+              </div>
+            </div>
+
+            <!-- Bottom barcode strip -->
+            <div class="px-4 pb-2">
+              <div class="barcode h-4 rounded-sm opacity-90"></div>
+              <div class="flex items-center justify-between mt-1">
+                <p class="text-[7px] font-mono text-navy-800" id="pv-barcode">*MPS-RONIJA•ADA-LOVELACE•R-2026-014*</p>
+                <p class="text-[7px] uppercase tracking-widest text-navy-600">If found, return to school office</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="mt-4 text-xs text-navy-300 max-w-sm text-center">
+          Preview scales to fit your screen. The printed card comes out at exact
+          <span class="text-gold-300 font-medium">85.6 × 53.98 mm</span>.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     FOOTER
+============================================================ -->
+<footer class="bg-navy-950 border-t border-navy-800 text-navy-200">
+  <div class="max-w-7xl mx-auto px-6 lg:px-10 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
+    <p class="text-sm">© <span id="year"></span> MPS Ronija. All rights reserved.</p>
+    <div class="flex items-center gap-5 text-lg">
+      <a href="#" aria-label="Instagram" class="hover:text-gold-300"><i class="fa-brands fa-instagram"></i></a>
+      <a href="#" aria-label="X" class="hover:text-gold-300"><i class="fa-brands fa-x-twitter"></i></a>
+      <a href="#" aria-label="YouTube" class="hover:text-gold-300"><i class="fa-brands fa-youtube"></i></a>
+      <a href="#" aria-label="LinkedIn" class="hover:text-gold-300"><i class="fa-brands fa-linkedin-in"></i></a>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================
+     SCRIPT — Live binding + Object URL image preview + Print
+============================================================ -->
+<script>
+  (function () {
+    // Elements ------------------------------------------------
+    const fName   = document.getElementById('f-name');
+    const fGrade  = document.getElementById('f-grade');
+    const fRoll   = document.getElementById('f-roll');
+    const fBlood  = document.getElementById('f-blood');
+    const fPhoto  = document.getElementById('f-photo');
+    const fSection = document.getElementById('f-section');
+    const fParent = document.getElementById('f-parent');
+    const fAddress = document.getElementById('f-address');
+    const layoutInputs = document.querySelectorAll('input[name="card-layout"]');
+
+    const pvName   = document.getElementById('pv-name');
+    const pvGrade  = document.getElementById('pv-grade');
+    const pvRoll   = document.getElementById('pv-roll');
+    const pvBlood  = document.getElementById('pv-blood');
+    const pvSection = document.getElementById('pv-section');
+    const pvParent = document.getElementById('pv-parent');
+    const pvAddress = document.getElementById('pv-address');
+    const pvPhoto  = document.getElementById('pv-photo');
+    const pvPhotoPlaceholder = document.getElementById('pv-photo-placeholder');
+    const pvQrid   = document.getElementById('pv-qrid');
+    const pvBarcode= document.getElementById('pv-barcode');
+    const pvValid  = document.getElementById('pv-valid');
+    const pvQr = document.getElementById('pv-qr');
+
+    const btnPrint = document.getElementById('btn-print');
+    const btnReset = document.getElementById('btn-reset');
+    const mobileToggle = document.getElementById('mobile-toggle');
+    const mobileMenu   = document.getElementById('mobile-menu');
+    const yearEl = document.getElementById('year');
+
+    // Housekeeping --------------------------------------------
+    yearEl.textContent = new Date().getFullYear();
+
+    // Set default valid-thru to +1 year, June
+    (function setValidThru() {
+      const nextYear = new Date().getFullYear() + 1;
+      pvValid.textContent = `06 / ${nextYear}`;
+    })();
+
+    // Track object URLs to revoke on change ------------------
+    let currentObjectUrl = null;
+    function setPhotoFromFile(file) {
+      if (!file) return;
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = URL.createObjectURL(file);
+      pvPhoto.src = currentObjectUrl;
+      pvPhoto.classList.remove('hidden');
+      pvPhotoPlaceholder.classList.add('hidden');
+    }
+    function clearPhoto() {
+      if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+      currentObjectUrl = null;
+      pvPhoto.src = '';
+      pvPhoto.classList.add('hidden');
+      pvPhotoPlaceholder.classList.remove('hidden');
+    }
+
+    // Live bindings -------------------------------------------
+    function slug(v) {
+      return (v || '').toString().trim().toUpperCase().replace(/\s+/g, '-').replace(/[^A-Z0-9-]/g, '');
+    }
+    function refreshMeta() {
+      const nameSlug = slug(fName.value) || 'STUDENT';
+      const rollSlug = slug(fRoll.value) || 'ROLL';
+      pvBarcode.textContent = `*MPS-RONIJA•${nameSlug}•${rollSlug}*`;
+      // QR-id derived from last 3 chars of roll
+      const tail = (fRoll.value || '000').replace(/[^A-Za-z0-9]/g, '').slice(-3).toUpperCase() || '000';
+      pvQrid.textContent = `#RA-${tail}`;
+      pvQr.innerHTML = '';
+      if (window.QRCode) {
+        new QRCode(pvQr, { text: `MPS-RONIJA|${nameSlug}|${rollSlug}|${fParent.value || 'PARENT'}`, width: 36, height: 36, correctLevel: QRCode.CorrectLevel.M });
+      }
+    }
+
+    fName.addEventListener('input',  () => { pvName.textContent  = fName.value  || 'Ada Lovelace'; refreshMeta(); });
+    fGrade.addEventListener('input', () => { pvGrade.textContent = fGrade.value || 'Grade 10'; });
+    fRoll.addEventListener('input',  () => { pvRoll.textContent  = fRoll.value  || 'R-2026-014';   refreshMeta(); });
+    fBlood.addEventListener('change',() => { pvBlood.textContent = fBlood.value || '—'; });
+    fSection.addEventListener('input', () => { pvSection.textContent = fSection.value || 'A'; });
+    fParent.addEventListener('input', () => { pvParent.textContent = fParent.value || 'Parent / Guardian'; refreshMeta(); });
+    fAddress.addEventListener('input', () => { pvAddress.textContent = fAddress.value || 'Student address'; });
+    layoutInputs.forEach(input => input.addEventListener('change', () => {
+      document.getElementById('printable-card').classList.toggle('vertical', input.value === 'vertical' && input.checked);
+    }));
+
+    fPhoto.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) setPhotoFromFile(file);
+      else clearPhoto();
+    });
+
+    // Open the dedicated print page with the current card data.
+    btnPrint.addEventListener('click', () => {
+      const cardData = {
+        name: fName.value || 'Ada Lovelace',
+        grade: fGrade.value || 'Grade 10 · A',
+        roll: fRoll.value || 'R-2026-014',
+        blood: fBlood.value || '—',
+        section: fSection.value || 'A',
+        parent: fParent.value || 'Parent / Guardian',
+        address: fAddress.value || 'Student address',
+        layout: document.querySelector('input[name="card-layout"]:checked').value,
+        valid: pvValid.textContent
+      };
+
+      const file = fPhoto.files && fPhoto.files[0];
+      const openPrintPage = (photo) => {
+        sessionStorage.setItem('rosewood-card-data', JSON.stringify({ ...cardData, photo }));
+        window.location.href = 'print.html';
+      };
+
+      if (!file) {
+        openPrintPage('');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.addEventListener('load', () => openPrintPage(reader.result));
+      reader.addEventListener('error', () => {
+        alert('The selected photo could not be prepared for printing. Please try another image.');
+      });
+      reader.readAsDataURL(file);
+    });
+
+    // Reset ---------------------------------------------------
+    btnReset.addEventListener('click', () => {
+      fName.value = ''; fGrade.value = ''; fRoll.value = ''; fBlood.value = ''; fSection.value = ''; fParent.value = ''; fAddress.value = ''; fPhoto.value = '';
+      pvName.textContent  = 'Ada Lovelace';
+      pvGrade.textContent = 'Grade 10';
+      pvRoll.textContent  = 'R-2026-014';
+      pvBlood.textContent = '—';
+      pvSection.textContent = 'A'; pvParent.textContent = 'Parent / Guardian'; pvAddress.textContent = 'Student address';
+      document.querySelector('input[value="horizontal"]').checked = true;
+      document.getElementById('printable-card').classList.remove('vertical');
+      clearPhoto();
+      refreshMeta();
+    });
+
+    // Mobile menu ---------------------------------------------
+    mobileToggle.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+    mobileMenu.querySelectorAll('a').forEach(a =>
+      a.addEventListener('click', () => mobileMenu.classList.add('hidden'))
+    );
+
+    // Initial state -------------------------------------------
+    refreshMeta();
+  })();
+</script>
+
+</body>
+</html>
