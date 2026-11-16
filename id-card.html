@@ -1,40 +1,407 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Generate ID Card — Mamta Public School</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
-<style>.studio{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:36px;padding:40px 24px}
-.pv{width:100%;max-width:440px;aspect-ratio:85.6/53.98;border-radius:14px;overflow:hidden;background:linear-gradient(135deg,#fff,#fdf8ec 55%,#f2dc94);box-shadow:0 24px 50px -18px rgba(14,27,52,.5);display:flex;flex-direction:column}
-.pv .h{background:#070f20;color:#fff;padding:7px 14px;display:flex;justify-content:space-between;font:600 13px Fraunces,serif}.pv .h small{color:#e9c65a;font:500 8px 'Inter Tight';letter-spacing:.2em}
-.pv .b{display:flex;gap:12px;padding:12px 14px;flex:1}.ph{width:27%;aspect-ratio:4/5;border:2px solid var(--g);border-radius:6px;background:#dfe6f2;overflow:hidden;display:grid;place-items:center}
-.ph img{width:100%;height:100%;object-fit:cover}.pv p{margin:0}.l{font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:#2f4b78}.v{font-size:11px;font-weight:600;margin-bottom:5px}
-.pv .nm{font:600 16px Fraunces,serif;margin-bottom:6px}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
-<div class="top"><div class="wrap"><b class="serif">Generate ID Card</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
-<div class="wrap studio"><div class="card"><h3>Student details</h3>
-<label>Full name</label><input id="name" maxlength="34" placeholder="Student name">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label>Class</label><input id="grade" maxlength="12"></div><div><label>Section</label><input id="section" maxlength="6"></div>
-<div><label>Roll no.</label><input id="roll" maxlength="12"></div><div><label>Blood group</label><select id="blood"><option value="">—</option><option>A+</option><option>A−</option><option>B+</option><option>B−</option><option>AB+</option><option>AB−</option><option>O+</option><option>O−</option></select></div></div>
-<label>Parent's name</label><input id="parent" maxlength="30"><label>Address</label><input id="address" maxlength="70">
-<label>Layout</label><select id="layout"><option value="horizontal">Horizontal</option><option value="vertical">Vertical</option></select>
-<label>Photo</label><input id="photo" type="file" accept="image/*"><p style="margin-top:20px"><button class="btn dark" id="go">Open Print Page</button></p></div>
-<div style="display:flex;flex-direction:column;align-items:center"><p class="k" style="color:#a97812">Live preview</p>
-<div class="pv"><div class="h"><span>Mamta Public School<br><small>RONIJA · STUDENT ID</small></span><small id="vyear">2026 – 27</small></div>
-<div class="b"><div class="ph"><img id="pi" hidden alt=""><span id="pp">👤</span></div><div style="min-width:0"><p class="l">Name</p><p class="nm" id="vn">Student Name</p>
-<p class="l">Class / Sec</p><p class="v" id="vg">—</p><p class="l">Roll · Blood</p><p class="v" id="vr">—</p><p class="l">Parent</p><p class="v" id="vp">—</p><p class="l">Address</p><p class="v" id="va">—</p></div></div></div></div></div>
-<script>
-const $=id=>document.getElementById(id);let photoData='';
-// Single source of truth for the academic session, also used by print.html.
-const SESSION_START=2026;                              // change each April
-const SESSION=SESSION_START+' – '+String(SESSION_START+1).slice(2);
-$('vyear').textContent=SESSION;
-function up(){$('vn').textContent=$('name').value||'Student Name';$('vg').textContent=($('grade').value||'—')+' · '+($('section').value||'—');
-$('vr').textContent=($('roll').value||'—')+' · '+($('blood').value||'—');$('vp').textContent=$('parent').value||'—';$('va').textContent=$('address').value||'—'}
-['name','grade','section','roll','blood','parent','address'].forEach(i=>$(i).addEventListener('input',up));
-$('photo').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{photoData=r.result;$('pi').src=photoData;$('pi').hidden=false;$('pp').hidden=true};r.readAsDataURL(f)};
-$('go').onclick=()=>{
- const d={name:$('name').value.trim()||'Student Name',grade:$('grade').value.trim()||'—',roll:$('roll').value.trim()||'—',
-  blood:$('blood').value||'—',section:$('section').value.trim()||'—',parent:$('parent').value.trim()||'—',
-  address:$('address').value.trim()||'—',layout:$('layout').value,valid:'06 / '+(SESSION_START+1),photo:photoData};
- if(!writeSessionJSON('mps-card-data',d)){alert('Could not save the card details. Your browser may be blocking storage.');return}
- location.href='print.html'};
-up();
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Create and preview printable student ID cards for Mamta Public School, Ronija.">
+  <title>Generate ID Card — Mamta Public School</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="common.js"></script>
+  <script>requireAuth()</script>
+  <style>
+    :root { --pnavy:#070f20; --pnavy2:#182746; --pgold:#dcae2e; --pgold2:#f2dc94; }
+    .editor-shell{max-width:1280px;margin:0 auto;padding:32px 24px 56px;display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:32px;align-items:start}
+    @media (max-width:980px){.editor-shell{grid-template-columns:1fr}}
+    .panel{background:#fff;border:1px solid var(--n1,#dfe6f2);border-radius:14px;padding:24px 22px}
+    .panel h3{font-family:Fraunces,Georgia,serif;font-size:22px;margin:0 0 4px;color:#070f20}
+    .panel .sub{margin:0 0 18px;font-size:13px;color:#243a5e;line-height:1.5}
+    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#eef1f6;padding:4px;border-radius:10px;margin-bottom:18px}
+    .tabs button{border:0;background:transparent;padding:9px 6px;border-radius:8px;font:600 11px/1.3 'Inter Tight',sans-serif;color:#243a5e;cursor:pointer;letter-spacing:.02em}
+    .tabs button.active{background:#fff;color:#070f20;box-shadow:0 2px 8px rgba(7,15,32,.08)}
+    .tab-pane{display:none}.tab-pane.active{display:block}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:520px){.grid2{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}}
+    @media (max-width:620px){.card-stage{zoom:.72}}
+    @media (max-width:430px){.card-stage{zoom:.6}}
+    .hintline{font-size:12px;color:#5b7fae;margin:8px 0 0;line-height:1.45}
+    .print-actions{margin-top:22px;padding-top:20px;border-top:1px solid #dfe6f2}
+    .print-actions .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+    .btn-print{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:11px 18px;font:600 13px 'Inter Tight',sans-serif;cursor:pointer;text-decoration:none}
+    .btn-print.gold{background:#dcae2e;color:#070f20}.btn-print.gold:hover{background:#f2dc94}
+    .btn-print.dark{background:#070f20;color:#fff}.btn-print.dark:hover{background:#182746}
+    .btn-print.ghost{background:#fff;border:1px solid #5b7fae;color:#182746}.btn-print.ghost:hover{border-color:#070f20}
+    /* Preview area */
+    .preview-col{display:flex;flex-direction:column;align-items:center}
+    .preview-tag{letter-spacing:.22em;text-transform:uppercase;font-size:11px;color:#a97812;font-weight:700;margin:0 0 14px}
+    .card-stage{position:relative;padding:14px;background:#fff;border-radius:18px;box-shadow:0 10px 25px -5px rgba(15,23,42,.08),0 8px 10px -6px rgba(15,23,42,.05);border:1px dashed #cbd5e1;display:inline-flex;flex-direction:column;align-items:center}
+    .lanyard-slot{width:44px;height:6px;background:#e2e8f0;border-radius:999px;margin:0 auto 6px;border:1px solid #cbd5e1}
+    .idc{width:324px;min-height:514px;background:#fff;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 4px 14px rgba(0,0,0,.12);border:1px solid #cbd5e1;display:flex;flex-direction:column;box-sizing:border-box}
+    .idc.horiz{width:514px;min-height:324px}
+    .idc::before{content:"";position:absolute;inset:0;background-image:radial-gradient(#1e3a8a .65px,transparent .65px);background-size:14px 14px;opacity:.04;pointer-events:none;z-index:0}
+    .idc-head{background:linear-gradient(135deg,#172554 0%,#1e3a8a 100%);color:#fff;padding:0 14px 14px;text-align:center;position:relative;border-bottom:3.5px solid #dcae2e;z-index:1}
+    .idc-brand{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:4px}
+    .idc-logo{width:38px;height:38px;border-radius:50%;background:#fff;color:#1e3a8a;display:flex;align-items:center;justify-content:center;flex-shrink:0;border:2px solid #dcae2e;overflow:hidden;font:800 16px Fraunces,serif}
+    .idc-logo img{width:100%;height:100%;object-fit:cover}
+    .idc-titles{text-align:left;min-width:0}
+    .idc-school{font-family:Fraunces,Georgia,serif;font-size:13px;font-weight:700;line-height:1.2;letter-spacing:.02em;text-transform:uppercase}
+    .idc-tag{font-size:8.5px;color:#cbd5e1;margin-top:2px;font-weight:500;line-height:1.3}
+    .idc-session{display:inline-block;margin-top:7px;background:#dcae2e;color:#070f20;font-size:9px;font-weight:800;letter-spacing:.08em;padding:3px 10px;border-radius:999px;text-transform:uppercase}
+    .idc-photo{display:flex;flex-direction:column;align-items:center;margin-top:11px;position:relative;z-index:1}
+    .idc-frame{width:96px;height:112px;border-radius:10px;border:2.5px solid #1e3a8a;padding:2px;background:#fff;box-shadow:0 4px 10px rgba(30,58,138,.14);position:relative}
+    .idc.horiz .idc-frame{width:88px;height:104px}
+    .idc-frame img{width:100%;height:100%;object-fit:cover;border-radius:6px;background:#e2e8f0;display:block}
+    .idc-frame .phph{position:absolute;inset:2px;border-radius:6px;display:grid;place-items:center;font-size:32px;color:#94a3b8;background:#e2e8f0}
+    .idc-blood{position:absolute;bottom:-8px;right:-12px;background:#dc2626;color:#fff;font-size:9.5px;font-weight:800;padding:2px 7px;border-radius:999px;border:2px solid #fff;box-shadow:0 2px 5px rgba(220,38,38,.3)}
+    .idc-identity{text-align:center;padding:10px 14px 4px;position:relative;z-index:1}
+    .idc-name{font-family:Fraunces,Georgia,serif;font-size:16px;font-weight:700;color:#172554;text-transform:uppercase;letter-spacing:.03em;line-height:1.2;word-break:break-word}
+    .idc-class{display:inline-block;margin-top:3px;font-size:10.5px;font-weight:700;color:#b7791f;background:#fef3c7;padding:2px 10px;border-radius:6px}
+    .idc-grid{padding:6px 18px;font-size:10.5px;position:relative;z-index:1;flex:1}
+    .idc-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px dashed #e2e8f0}
+    .idc-row:last-child{border-bottom:none}
+    .idc-lbl{color:#475569;font-weight:600;flex-shrink:0}.idc-val{color:#0f172a;font-weight:700;text-align:right;min-width:0}
+    .idc-foot{padding:6px 16px 12px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;position:relative;z-index:1;background:linear-gradient(to top,#f8fafc 70%,transparent)}
+    .idc-sig{width:44%;text-align:center}
+    .idc-sigline{border-top:1.2px solid #334155;font-size:7.5px;font-weight:700;color:#172554;padding-top:3px;text-transform:uppercase;letter-spacing:.04em;line-height:1.3}
+    .idc-sigsmall{font-size:6.5px;font-weight:600;color:#64748b;text-transform:none;letter-spacing:0;margin-top:1px}
+    /* Back */
+    .idc-back{display:none;flex-direction:column;min-height:514px}
+    .idc.horiz .idc-back{min-height:324px}
+    .idc-back.show{display:flex}
+    /* Landscape preview: compact layout matching the printed 85.6 x 53.98mm card */
+    .idc.horiz{width:514px;height:324px;min-height:0}
+    .idc.horiz .idc-front{display:grid;flex:1;min-height:0;grid-template-columns:126px 1fr;grid-template-rows:auto auto 1fr auto;grid-template-areas:"head head" "photo identity" "photo grid" "foot foot"}
+    .idc.horiz .idc-head{grid-area:head;padding:9px 18px;text-align:left;border-bottom-width:5px}
+    .idc.horiz .idc-brand{justify-content:flex-start;gap:11px;margin-top:0}
+    .idc.horiz .idc-logo{width:40px;height:40px;font-size:19px;border-width:2px}
+    .idc.horiz .idc-school{font-size:16px;line-height:1.1}
+    .idc.horiz .idc-tag{font-size:10.5px;margin-top:2px}
+    .idc.horiz .idc-session{margin-top:5px;font-size:10px;padding:2px 9px}
+    .idc.horiz .idc-photo{grid-area:photo;margin:0;padding:12px 0 0 18px;align-items:flex-start}
+    .idc.horiz .idc-frame{width:102px;height:138px;border-width:3px;border-radius:10px;padding:3px}
+    .idc.horiz .idc-frame .phph{font-size:30px}
+    .idc.horiz .idc-blood{font-size:11px;padding:2px 8px;bottom:-7px;right:-10px;border-width:2px}
+    .idc.horiz .idc-identity{grid-area:identity;text-align:left;padding:12px 18px 0 12px}
+    .idc.horiz .idc-name{font-size:19px}
+    .idc.horiz .idc-class{margin-top:3px;font-size:13px;padding:2px 9px}
+    .idc.horiz .idc-grid{grid-area:grid;padding:5px 18px 0 12px;font-size:12.5px;flex:none;align-self:start}
+    .idc.horiz .idc-row{padding:4px 0}
+    .idc.horiz .idc-lbl{font-size:12px}
+    .idc.horiz .idc-foot{grid-area:foot;padding:7px 18px 11px;gap:22px}
+    .idc.horiz .idc-sigline{font-size:10px;padding-top:4px}
+    .idc.horiz .idc-sigsmall{font-size:8.5px}
+    .idc.horiz .idc-back{display:none;min-height:0;grid-template-rows:auto 1fr auto}
+    .idc.horiz .idc-back.show{display:grid}
+    .idc.horiz .idc-bhead{padding:8px 18px 9px}
+    .idc.horiz .idc-btitle{font-size:14px;margin-top:0}
+    .idc.horiz .idc-bbody{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:11px 18px;align-content:start;flex:none;overflow:hidden}
+    .idc.horiz .idc-box{padding:8px 11px;border-radius:8px}
+    .idc.horiz .idc-box h4{font-size:10.5px;margin-bottom:5px}
+    .idc.horiz .idc-prow{font-size:12px;margin-bottom:3px}
+    .idc.horiz .idc-emg{font-size:12px;padding:6px 11px;border-radius:7px}
+    .idc.horiz .idc-addr{font-size:11.5px;line-height:1.35}
+    .idc.horiz .idc-terms{font-size:10.5px;line-height:1.3;padding-left:20px}
+    .idc.horiz .idc-bfoot{padding:8px 18px}
+    .idc.horiz .idc-bfoot .nm{font-size:11.5px}
+    .idc.horiz .idc-bfoot .ad{font-size:9px}
+    .idc.horiz .idc-qr{width:48px;height:48px}
+    .idc-front.hide{display:none!important}
+    .idc-bhead{background:#1e3a8a;color:#fff;padding:0 14px 10px;text-align:center;border-bottom:3px solid #dcae2e;position:relative;z-index:1}
+    .idc-btitle{font-family:Fraunces,Georgia,serif;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:4px}
+    .idc-bbody{padding:10px 14px;flex:1;display:flex;flex-direction:column;gap:8px;position:relative;z-index:1}
+    .idc-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:7px 10px}
+    .idc-box h4{margin:0 0 5px;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#1e3a8a}
+    .idc-prow{display:flex;justify-content:space-between;gap:6px;font-size:9.5px;margin-bottom:3px}.idc-prow:last-child{margin-bottom:0}
+    .idc-prow .k{color:#475569;font-weight:600}.idc-prow .v{color:#0f172a;font-weight:600;text-align:right}
+    .idc-emg{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:6px;padding:4px 8px;font-size:9.5px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+    .idc-addr{font-size:9.5px;line-height:1.4;color:#1e293b;font-weight:500;margin:0}
+    .idc-terms{margin:0;padding-left:14px;font-size:8px;line-height:1.35;color:#334155}
+    .idc-terms li{margin-bottom:2px}
+    .idc-bfoot{background:#172554;color:#fff;padding:9px 12px;border-top:3px solid #dcae2e;display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1}
+    .idc-bfoot .nm{font-size:9px;font-weight:800;color:#fbbf24;text-transform:uppercase;margin-bottom:2px}
+    .idc-bfoot .ad{font-size:7.5px;line-height:1.35;color:#e2e8f0}
+    .idc-qr{width:42px;height:42px;background:#fff;border-radius:4px;padding:3px;flex-shrink:0}
+    .idc-qr svg{width:100%;height:100%;display:block}
+    .preview-note{max-width:560px;text-align:center;margin-top:14px;font-size:12px;color:#5b7fae;line-height:1.5}
+    @media print{ .no-print{display:none!important} }
+  </style>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="top"><div class="wrap"><b class="serif">Generate ID Card</b><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><a class="back" href="dashboard.html">← Dashboard</a><button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button></div></div></div>
+
+  <div class="editor-shell">
+    <div class="panel">
+      <h3>Student ID details</h3>
+      <p class="sub">Enter information, preview front &amp; back, then print the side(s) you need. Head and Principal signatures appear on the front; student signature is not used.</p>
+      <p class="hintline" style="margin:-8px 0 14px"><a href="students.html" style="color:#0e1b34;font-weight:600">← Open student database</a> to load a saved student or a whole class.</p>
+      <div class="tabs" role="tablist" aria-label="Editor sections">
+        <button type="button" class="active" data-tab="student" role="tab">Student</button>
+        <button type="button" data-tab="family" role="tab">Family &amp; address</button>
+        <button type="button" data-tab="school" role="tab">School &amp; rules</button>
+      </div>
+
+      <div class="tab-pane active" id="tab-student">
+        <label for="name">Full name</label>
+        <input id="name" maxlength="40" placeholder="e.g. Aarav Sharma" autocomplete="off" />
+        <div class="grid2">
+          <div><label for="grade">Class</label><input id="grade" maxlength="12" placeholder="e.g. X" /></div>
+          <div><label for="section">Section</label><input id="section" maxlength="6" placeholder="e.g. A" /></div>
+        </div>
+        <div class="grid2">
+          <div><label for="roll">Admission / Roll no.</label><input id="roll" maxlength="20" placeholder="e.g. ADM-2026-0418" /></div>
+          <div><label for="blood">Blood group</label><select id="blood"><option value="">—</option><option>A+</option><option>A−</option><option>B+</option><option>B−</option><option>AB+</option><option>AB−</option><option>O+</option><option>O−</option></select></div>
+        </div>
+        <label for="dob">Date of birth</label>
+        <input id="dob" maxlength="30" placeholder="e.g. 14 Aug 2011" autocomplete="off" />
+        <label for="valid">Valid upto</label>
+        <input id="valid" maxlength="30" placeholder="e.g. 31 March 2027" autocomplete="off" />
+        <label for="photo">Photo (optional)</label>
+        <input id="photo" type="file" accept="image/*" />
+        <p class="hintline">Use a clear headshot for best results.</p>
+      </div>
+
+      <div class="tab-pane" id="tab-family">
+        <label for="father">Father’s name</label>
+        <input id="father" maxlength="60" placeholder="e.g. Mr. Rajesh Sharma" autocomplete="off" />
+        <label for="mother">Mother’s name</label>
+        <input id="mother" maxlength="60" placeholder="e.g. Mrs. Sunita Sharma" autocomplete="off" />
+        <label for="contact">Contact / emergency number</label>
+        <input id="contact" maxlength="40" placeholder="e.g. +91 98765 43210" autocomplete="off" />
+        <label for="address">Residential address</label>
+        <textarea id="address" rows="3" maxlength="240" placeholder="House no., street, village/town, district, state, PIN" style="width:100%;padding:11px 13px;border:1px solid #b9c8e0;border-radius:8px;font:inherit;background:#fff;resize:vertical"></textarea>
+      </div>
+
+      <div class="tab-pane" id="tab-school">
+        <label for="schoolName">School name</label>
+        <input id="schoolName" maxlength="80" value="Mamta Public School" autocomplete="off" />
+        <label for="schoolTag">Tagline / affiliation line</label>
+        <input id="schoolTag" maxlength="120" value="Ronija, Greater Noida (U.P.)" autocomplete="off" />
+        <label for="schoolAddr">School address &amp; contact (printed on back)</label>
+        <textarea id="schoolAddr" rows="2" maxlength="220" style="width:100%;padding:11px 13px;border:1px solid #b9c8e0;border-radius:8px;font:inherit;background:#fff;resize:vertical">Ronija, Greater Noida, Uttar Pradesh, India | Office hours Mon–Sat 8:00 am – 2:00 pm</textarea>
+        <label for="terms">Terms &amp; conditions (one per line)</label>
+        <textarea id="terms" rows="4" maxlength="500" style="width:100%;padding:11px 13px;border:1px solid #b9c8e0;border-radius:8px;font:inherit;background:#fff;resize:vertical">Carrying this ID card on school premises is compulsory.
+This card is non-transferable and valid for the printed session.
+Report loss immediately to the school office.
+If found, please return to the school address above.</textarea>
+        <label for="layout">Card layout</label>
+        <select id="layout"><option value="vertical">Vertical (standard CR80)</option><option value="horizontal">Horizontal</option></select>
+      </div>
+
+      <div class="print-actions">
+        <p class="k" style="color:#a97812;margin:0 0 6px">Print options</p>
+        <p class="hintline" style="margin:0 0 4px">Opens the print page. Use your browser’s print dialog (100% scale) for best results.</p>
+        <div class="row">
+          <button type="button" class="btn-print gold" id="printFront">Print Front</button>
+          <button type="button" class="btn-print dark" id="printBack">Print Back</button>
+          <button type="button" class="btn-print ghost" id="printBoth">Print Both</button>
+        </div>
+        <p class="hintline" style="margin-top:14px"><button type="button" class="btn ghost" id="clearCardData" style="padding:6px 12px;font-size:12px;color:#182746">Clear saved card data</button></p>
+      </div>
+    </div>
+
+    <div class="preview-col">
+      <p class="preview-tag">Live preview</p>
+      <div class="card-stage" id="previewStage">
+        <div class="lanyard-slot" aria-hidden="true"></div>
+        <div class="idc" id="idcCard">
+          <!-- FRONT -->
+          <div class="idc-front" id="idcFront">
+            <div class="idc-head">
+              <div class="idc-brand">
+                <div class="idc-logo" id="pvLogo">M</div>
+                <div class="idc-titles">
+                  <div class="idc-school" id="pvSchool">Mamta Public School</div>
+                  <div class="idc-tag" id="pvTag">Ronija, Greater Noida (U.P.)</div>
+                </div>
+              </div>
+              <div class="idc-session" id="pvSession">SESSION 2026–27</div>
+            </div>
+            <div class="idc-photo">
+              <div class="idc-frame">
+                <img id="pvPhoto" src="" alt="" style="display:none" />
+                <span class="phph" id="pvPhotoPh">👤</span>
+                <span class="idc-blood" id="pvBlood">—</span>
+              </div>
+            </div>
+            <div class="idc-identity">
+              <div class="idc-name" id="pvName">Student Name</div>
+              <div class="idc-class" id="pvClass">Class — · —</div>
+            </div>
+            <div class="idc-grid">
+              <div class="idc-row"><span class="idc-lbl">Admission / Roll</span><span class="idc-val" id="pvRoll">—</span></div>
+              <div class="idc-row"><span class="idc-lbl">Date of Birth</span><span class="idc-val" id="pvDob">—</span></div>
+              <div class="idc-row"><span class="idc-lbl">Valid Upto</span><span class="idc-val" id="pvValid">—</span></div>
+            </div>
+            <div class="idc-foot">
+              <div class="idc-sig"><div class="idc-sigline">Class teacher<div class="idc-sigsmall">Head of section</div></div></div>
+              <div class="idc-sig"><div class="idc-sigline">Principal<div class="idc-sigsmall">Authorized signatory</div></div></div>
+            </div>
+          </div>
+          <!-- BACK -->
+          <div class="idc-back" id="idcBack">
+            <div class="idc-bhead"><div class="lanyard-slot" style="background:#e2e8f0;border-color:#cbd5e1;margin-bottom:4px"></div><div class="idc-btitle">Student &amp; emergency details</div></div>
+            <div class="idc-bbody">
+              <div class="idc-box"><h4>Parents / guardian</h4>
+                <div class="idc-prow"><span class="k">Father</span><span class="v" id="pvFather">—</span></div>
+                <div class="idc-prow"><span class="k">Mother</span><span class="v" id="pvMother">—</span></div>
+              </div>
+              <div class="idc-emg"><span>EMERGENCY CONTACT</span><span id="pvContact">—</span></div>
+              <div class="idc-box"><h4>Residential address</h4><p class="idc-addr" id="pvAddr">—</p></div>
+              <div class="idc-box"><h4>Terms &amp; conditions</h4><ol class="idc-terms" id="pvTerms"></ol></div>
+            </div>
+            <div class="idc-bfoot">
+              <div style="min-width:0;flex:1"><div class="nm" id="pvSchoolFoot">Mamta Public School</div><div class="ad" id="pvSchoolAddr">—</div></div>
+              <div class="idc-qr" aria-hidden="true"><svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><path d="M2 2h10v10H2V2zm2 2v6h6V4H4zm2 2h2v2H6V6zm18-4h10v10H24V2zm2 2v6h6V4h-6zm2 2h2v2h-2V6zM2 24h10v10H2V24zm2 2v6h6v-6H4zm2 2h2v2H6v-2zm10-24h2v4h-2V4zm4 2h2v4h-2V6zm-4 6h4v2h-4v-2zm-2 4h2v4h-2v-4zm4 2h4v2h-4v-2zm6-2h2v4h-2v-4zm4 0h4v2h-4v-2zm-14 6h4v2h-4v-2zm6 2h2v4h-2v-4zm4 0h4v2h-4v-2zm-10 4h4v4h-4v-4zm6 2h2v4h-2v-4zm4 0h6v2h-6v-2zm2 4h4v2h-4v-2z"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="preview-note">Preview shows the front by default. Use <strong>Print Front / Back / Both</strong> to open the print page for the selected side(s). Final output is CR80-sized on the print page.</p>
+      <div class="no-print" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+        <button type="button" class="btn ghost" style="color:#182746" id="showFront">Show front preview</button>
+        <button type="button" class="btn ghost" style="color:#182746" id="showBack">Show back preview</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const $ = id => document.getElementById(id);
+    let photoData = '';
+    const SESSION_START = 2026;
+    const SESSION = 'SESSION ' + SESSION_START + '–' + String(SESSION_START + 1).slice(2);
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // Tabs
+    document.querySelectorAll('.tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const t = btn.dataset.tab;
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        $('tab-' + t).classList.add('active');
+      });
+    });
+
+    function readForm(){
+      return {
+        name: $('name').value.trim(),
+        grade: $('grade').value.trim(),
+        section: $('section').value.trim(),
+        roll: $('roll').value.trim(),
+        blood: $('blood').value,
+        dob: $('dob').value.trim(),
+        valid: $('valid').value.trim() || ('31 March ' + (SESSION_START + 1)),
+        father: $('father').value.trim(),
+        mother: $('mother').value.trim(),
+        contact: $('contact').value.trim(),
+        address: $('address').value.trim(),
+        schoolName: $('schoolName').value.trim() || 'Mamta Public School',
+        schoolTag: $('schoolTag').value.trim(),
+        schoolAddr: $('schoolAddr').value.trim(),
+        terms: $('terms').value,
+        layout: $('layout').value,
+        photo: photoData,
+        sessionLabel: SESSION
+      };
+    }
+
+    function renderPreview(){
+      const d = readForm();
+      $('pvSchool').textContent = d.schoolName;
+      $('pvTag').textContent = d.schoolTag || ' ';
+      $('pvSession').textContent = d.sessionLabel;
+      $('pvName').textContent = d.name || 'Student Name';
+      $('pvClass').textContent = 'Class ' + (d.grade || '—') + ' · ' + (d.section || '—');
+      $('pvRoll').textContent = d.roll || '—';
+      $('pvDob').textContent = d.dob || '—';
+      $('pvValid').textContent = d.valid || '—';
+      $('pvBlood').textContent = d.blood || '—';
+      $('pvFather').textContent = d.father || '—';
+      $('pvMother').textContent = d.mother || '—';
+      $('pvContact').textContent = d.contact || '—';
+      $('pvAddr').textContent = d.address || '—';
+      $('pvSchoolFoot').textContent = d.schoolName;
+      $('pvSchoolAddr').textContent = d.schoolAddr || '—';
+      // terms
+      const lines = (d.terms||'').split('\n').map(s=>s.trim()).filter(Boolean);
+      $('pvTerms').innerHTML = lines.length ? lines.map(t=>'<li>'+esc(t)+'</li>').join('') : '<li>—</li>';
+      // photo
+      if(d.photo){ $('pvPhoto').src = d.photo; $('pvPhoto').style.display='block'; $('pvPhotoPh').style.display='none'; }
+      else { $('pvPhoto').removeAttribute('src'); $('pvPhoto').style.display='none'; $('pvPhotoPh').style.display='grid'; }
+      // layout class
+      const card = $('idcCard');
+      card.classList.toggle('horiz', d.layout === 'horizontal');
+    }
+
+    ['name','grade','section','roll','blood','dob','valid','father','mother','contact','address','schoolName','schoolTag','schoolAddr','terms','layout'].forEach(id => {
+      const el = $(id);
+      if(el) el.addEventListener('input', renderPreview);
+      if(el && el.tagName === 'SELECT') el.addEventListener('change', renderPreview);
+    });
+    $('photo').addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if(!f){ photoData=''; renderPreview(); return; }
+      const r = new FileReader();
+      r.onload = () => { photoData = r.result; renderPreview(); };
+      r.readAsDataURL(f);
+    });
+
+    $('showFront').addEventListener('click', () => { $('idcFront').classList.remove('hide'); $('idcBack').classList.remove('show'); });
+    $('showBack').addEventListener('click', () => { $('idcFront').classList.add('hide'); $('idcBack').classList.add('show'); });
+
+    function saveAndGo(sides){
+      const d = readForm();
+      if(!writeSessionJSON('mps-card-data', d)){ alert('Could not save card details. Your browser may be blocking storage.'); return; }
+      writeSessionJSON('mps-card-print', { sides: sides, at: Date.now() });
+      // A single-card flow must win over any stale class batch.
+      removeStoredJSON('mps-card-batch');
+      location.href = 'print.html';
+    }
+    $('printFront').addEventListener('click', () => saveAndGo(['front']));
+    $('printBack').addEventListener('click', () => saveAndGo(['back']));
+    $('printBoth').addEventListener('click', () => saveAndGo(['front','back']));
+
+    // Pre-fill from the student database (single student hand-off).
+    const prefill = readSessionJSON('mps-card-prefill', null);
+    if(prefill && prefill.student){
+      const s = prefill.student;
+      $('name').value = s.name || '';
+      $('grade').value = s.grade || '';
+      $('section').value = s.section || '';
+      $('roll').value = s.roll || '';
+      $('blood').value = s.blood || '';
+      $('dob').value = s.dob || '';
+      $('valid').value = s.valid || '';
+      $('father').value = s.father || '';
+      $('mother').value = s.mother || '';
+      $('contact').value = s.contact || '';
+      $('address').value = s.address || '';
+      photoData = typeof s.photo === 'string' ? s.photo : '';
+      removeStoredJSON('mps-card-prefill');
+    }
+
+    $('clearCardData').addEventListener('click', () => {
+      removeStoredJSON('mps-card-data');
+      removeStoredJSON('mps-card-print');
+      removeStoredJSON('mps-card-batch');
+      photoData = '';
+      $('name').value = ''; $('grade').value = ''; $('section').value = ''; $('roll').value = '';
+      $('blood').value = ''; $('dob').value = ''; $('valid').value = '';
+      $('father').value = ''; $('mother').value = ''; $('contact').value = ''; $('address').value = '';
+      $('schoolName').value = 'Mamta Public School';
+      $('schoolTag').value = 'Ronija, Greater Noida (U.P.)';
+      $('schoolAddr').value = 'Ronija, Greater Noida, Uttar Pradesh, India | Office hours Mon–Sat 8:00 am – 2:00 pm';
+      $('terms').value = 'Carrying this ID card on school premises is compulsory.\nThis card is non-transferable and valid for the printed session.\nReport loss immediately to the school office.\nIf found, please return to the school address above.';
+      $('layout').value = 'vertical';
+      $('photo').value = '';
+      renderPreview();
+      alert('Saved card data cleared.');
+    });
+
+    renderPreview();
+  })();
+  </script>
+</body>
+</html>

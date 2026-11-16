@@ -1,0 +1,456 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Local student database for Mamta Public School admin tools.">
+<title>Student Database — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<style>
+.db-grid{display:grid;grid-template-columns:minmax(300px,400px) 1fr;gap:28px;padding:32px 24px;max-width:1240px;margin:auto;align-items:start}
+.db-grid>*{min-width:0}
+.panel input,.panel select,.panel textarea{max-width:100%}
+.panel input[type=file]{width:100%;font-size:11.5px}
+.two>div{min-width:0}
+@media(max-width:980px){.db-grid{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--n1);border-radius:14px;padding:22px;min-width:0}
+.panel h2{font-size:20px;margin:0 0 4px}
+.panel .sub{font-size:12.5px;color:#5b7fae;line-height:1.5;margin:0 0 16px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.two{grid-template-columns:1fr}}
+.photo-row{display:flex;gap:12px;align-items:center;margin-top:6px}
+.photo-prev{width:54px;height:64px;border-radius:8px;border:1px solid #cbd5e1;background:#eef1f6;display:grid;place-items:center;overflow:hidden;flex:none;font-size:10px;color:#5b7fae;text-align:center}
+.photo-prev img{width:100%;height:100%;object-fit:cover}
+.form-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.note{font-size:12px;color:#875a11;background:#fdf8ec;border:1px solid #f2dc94;border-radius:8px;padding:10px 12px;line-height:1.5;margin:0 0 16px}
+table.db{width:100%;border-collapse:collapse;font-size:13.5px}
+table.db th{text-align:left;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5b7fae;border-bottom:1px solid var(--n1);padding:8px 6px}
+table.db td{padding:9px 6px;border-bottom:1px solid #eef1f6;vertical-align:middle}
+table.db tr:hover td{background:#fafbfd}
+.who{display:flex;gap:9px;align-items:center}
+.avatar{width:30px;height:30px;border-radius:50%;background:#eef1f6;overflow:hidden;display:grid;place-items:center;font-size:11px;color:#5b7fae;flex:none}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.mini{border:1px solid #b9c8e0;background:#fff;border-radius:999px;padding:5px 10px;font:600 11.5px 'Inter Tight',sans-serif;cursor:pointer;color:#182746;text-decoration:none;display:inline-block}
+.mini:hover{border-color:#070f20}
+.mini.warn{color:#b91c1c;border-color:#e5a3a3}
+.mini.gold{background:#dcae2e;border-color:#dcae2e;color:#070f20}
+.classes{display:grid;gap:8px;margin-top:6px}
+.class-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e6edf7;border-radius:10px;background:#fafbfd;flex-wrap:wrap}
+.class-row b{font-size:14px}
+.class-row .cnt{font-size:12px;color:#5b7fae}
+.empty{padding:26px;text-align:center;color:#5b7fae;font-size:13.5px;line-height:1.6}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
+.search{flex:1;min-width:180px;max-width:320px}
+h3.sec{font-size:15px;margin:0;letter-spacing:.04em}
+.stack{display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
+<div class="top"><div class="wrap"><b class="serif">Student Database</b><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><a class="back" href="dashboard.html">← Dashboard</a><button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button></div></div></div>
+
+<main class="db-grid">
+  <section class="panel">
+    <h2 id="formTitle">Add student</h2>
+    <p class="sub">Details feed the ID card and admit card generators. Stored only on this computer (browser storage).</p>
+    <p class="note"><b>Local only:</b> another computer will not see this list. Use <b>Export</b> / <b>Import</b> to move it between computers.</p>
+
+    <form id="studentForm" autocomplete="off">
+      <input type="hidden" id="sId">
+      <label for="sName">Full name *</label><input id="sName" required maxlength="60" placeholder="e.g. Aarav Sharma">
+      <div class="two">
+        <div><label for="sGrade">Class *</label><input id="sGrade" required maxlength="12" placeholder="e.g. X"></div>
+        <div><label for="sSection">Section</label><input id="sSection" maxlength="6" placeholder="e.g. A"></div>
+      </div>
+      <div class="two">
+        <div><label for="sRoll">Admission / Roll no.</label><input id="sRoll" maxlength="24" placeholder="e.g. ADM-2026-0418"></div>
+        <div><label for="sBlood">Blood group</label>
+          <select id="sBlood"><option value="">—</option><option>A+</option><option>A−</option><option>B+</option><option>B−</option><option>AB+</option><option>AB−</option><option>O+</option><option>O−</option></select>
+        </div>
+      </div>
+      <div class="two">
+        <div><label for="sDob">Date of birth</label><input id="sDob" maxlength="30" placeholder="e.g. 14 Aug 2011"></div>
+        <div><label for="sValid">Valid upto (ID card)</label><input id="sValid" maxlength="30" placeholder="e.g. 31 March 2027"></div>
+      </div>
+      <div class="two">
+        <div><label for="sFather">Father's name</label><input id="sFather" maxlength="60" placeholder="e.g. Mr. Rajesh Sharma"></div>
+        <div><label for="sMother">Mother's name</label><input id="sMother" maxlength="60" placeholder="e.g. Mrs. Sunita Sharma"></div>
+      </div>
+      <div class="two">
+        <div><label for="sContact">Contact / emergency no.</label><input id="sContact" maxlength="40" placeholder="e.g. +91 98765 43210"></div>
+        <div><label for="sNameHi">Name in Hindi (admit card)</label><input id="sNameHi" maxlength="60" placeholder="देवनागरी में नाम"></div>
+      </div>
+      <div class="two">
+        <div><label for="sFatherHi">Father's name in Hindi</label><input id="sFatherHi" maxlength="60" placeholder="पिता का नाम"></div>
+        <div><label for="sPhoto">Photo (optional)</label><input type="file" id="sPhoto" accept="image/*"></div>
+      </div>
+      <label for="sAddress">Residential address</label>
+      <textarea id="sAddress" rows="2" maxlength="240" style="width:100%;padding:11px 13px;border:1px solid #b9c8e0;border-radius:8px;font:inherit;background:#fff;resize:vertical" placeholder="House, street, village/town, district, state, PIN"></textarea>
+
+      <div class="photo-row">
+        <div class="photo-prev" id="photoPrev">No photo</div>
+        <div style="flex:1"><p class="sub" style="margin:0">Photos are resized before saving to keep storage small.</p></div>
+        <button type="button" class="mini" id="removePhoto">Remove photo</button>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn dark" type="submit" id="saveBtn">Save student</button>
+        <button class="btn ghost" type="button" id="cancelEdit" style="color:#182746" hidden>Cancel edit</button>
+        <span id="formMsg" style="font-size:12px;color:#166534;align-self:center" aria-live="polite"></span>
+      </div>
+    </form>
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <div class="toolbar">
+        <h3 class="sec">Students <span id="count" class="cnt" style="font-weight:400"></span></h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="search" class="search" placeholder="Search name, class or roll…" aria-label="Search students">
+          <button class="mini" type="button" id="exportBtn">Export JSON</button>
+          <label class="mini" style="margin:0;text-transform:none;letter-spacing:0;font-size:11.5px;color:#182746">Import JSON<input type="file" id="importFile" accept="application/json,.json" hidden></label>
+        </div>
+      </div>
+
+      <h3 class="sec" style="font-size:13px;color:#5b7fae;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px">Classes</h3>
+      <div class="classes" id="classes"></div>
+
+      <div style="overflow:auto;margin-top:18px">
+        <table class="db">
+          <thead><tr><th>Student</th><th>Class</th><th>Roll / Adm.</th><th>Contact</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div class="empty" id="empty" hidden>No students yet. Add one on the left, or import a JSON export from another computer.</div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const SESSION = (function(){ const start = 2026; return 'SESSION ' + start + '–' + String(start + 1).slice(2); })();
+  let students = mpsSortStudents(mpsStudents());
+  let editingId = null;
+  let photoData = '';
+
+  function initials(name){
+    return String(name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0] || '').join('').toUpperCase();
+  }
+
+  function setMsg(msg, ok){
+    const el = $('formMsg');
+    el.textContent = msg || '';
+    el.style.color = ok === false ? '#b91c1c' : '#166534';
+    if(msg) setTimeout(() => { if(el.textContent === msg) el.textContent = ''; }, 2600);
+  }
+
+  function renderPhoto(){
+    const box = $('photoPrev');
+    box.replaceChildren();
+    if(photoData){
+      const img = document.createElement('img');
+      img.src = photoData;
+      img.alt = 'Student photo preview';
+      box.appendChild(img);
+    } else {
+      box.textContent = 'No photo';
+    }
+  }
+
+  function readForm(){
+    return {
+      id: $('sId').value || mpsNewStudentId(),
+      name: $('sName').value.trim(),
+      grade: $('sGrade').value.trim(),
+      section: $('sSection').value.trim(),
+      roll: $('sRoll').value.trim(),
+      blood: $('sBlood').value,
+      dob: $('sDob').value.trim(),
+      valid: $('sValid').value.trim(),
+      father: $('sFather').value.trim(),
+      mother: $('sMother').value.trim(),
+      contact: $('sContact').value.trim(),
+      nameHi: $('sNameHi').value.trim(),
+      fatherHi: $('sFatherHi').value.trim(),
+      address: $('sAddress').value.trim(),
+      photo: photoData,
+      updatedAt: Date.now()
+    };
+  }
+
+  function fillForm(s){
+    editingId = s.id || null;
+    $('sId').value = s.id || '';
+    $('sName').value = s.name || '';
+    $('sGrade').value = s.grade || '';
+    $('sSection').value = s.section || '';
+    $('sRoll').value = s.roll || '';
+    $('sBlood').value = s.blood || '';
+    $('sDob').value = s.dob || '';
+    $('sValid').value = s.valid || '';
+    $('sFather').value = s.father || '';
+    $('sMother').value = s.mother || '';
+    $('sContact').value = s.contact || '';
+    $('sNameHi').value = s.nameHi || '';
+    $('sFatherHi').value = s.fatherHi || '';
+    $('sAddress').value = s.address || '';
+    photoData = s.photo || '';
+    renderPhoto();
+    $('formTitle').textContent = 'Edit student';
+    $('saveBtn').textContent = 'Update student';
+    $('cancelEdit').hidden = false;
+    $('sName').focus();
+  }
+
+  function resetForm(){
+    editingId = null;
+    photoData = '';
+    $('studentForm').reset();
+    $('sId').value = '';
+    $('formTitle').textContent = 'Add student';
+    $('saveBtn').textContent = 'Save student';
+    $('cancelEdit').hidden = true;
+    renderPhoto();
+  }
+
+  function filtered(){
+    const q = $('search').value.trim().toLowerCase();
+    if(!q) return students;
+    return students.filter(s => [s.name, s.grade, s.section, s.roll, s.father].join(' ').toLowerCase().includes(q));
+  }
+
+  function renderClasses(){
+    const box = $('classes');
+    box.replaceChildren();
+    const groups = new Map();
+    students.forEach(s => {
+      const key = mpsClassKey(s);
+      if(!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(s);
+    });
+    if(!groups.size){
+      box.innerHTML = '<p class="cnt" style="font-size:12.5px">Add students and their classes will appear here, with one-click card generation.</p>';
+      return;
+    }
+    mpsSortStudents([...groups.values()].map(list => list[0])).forEach(sample => {
+      const key = mpsClassKey(sample);
+      const list = groups.get(key);
+      const row = document.createElement('div');
+      row.className = 'class-row';
+      const info = document.createElement('div');
+      const name = document.createElement('b');
+      name.textContent = mpsClassLabel(sample);
+      const cnt = document.createElement('span');
+      cnt.className = 'cnt';
+      cnt.textContent = ' · ' + list.length + (list.length === 1 ? ' student' : ' students');
+      info.append(name, cnt);
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+      const idBtn = document.createElement('button');
+      idBtn.className = 'mini gold';
+      idBtn.textContent = 'ID cards';
+      idBtn.onclick = () => batchIdCards(list);
+      const adBtn = document.createElement('button');
+      adBtn.className = 'mini';
+      adBtn.textContent = 'Admit cards';
+      adBtn.onclick = () => batchAdmitCards(list);
+      actions.append(idBtn, adBtn);
+      row.append(info, actions);
+      box.appendChild(row);
+    });
+  }
+
+  function renderRows(){
+    const rows = $('rows');
+    rows.replaceChildren();
+    const list = filtered();
+    $('count').textContent = '· ' + students.length + ' saved';
+    $('empty').hidden = students.length > 0;
+    list.forEach(s => {
+      const tr = document.createElement('tr');
+
+      const tdWho = document.createElement('td');
+      const who = document.createElement('div');
+      who.className = 'who';
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      if(s.photo){ const img = document.createElement('img'); img.src = s.photo; img.alt = ''; av.appendChild(img); }
+      else av.textContent = initials(s.name);
+      const nm = document.createElement('b');
+      nm.textContent = s.name || '(no name)';
+      who.append(av, nm);
+      tdWho.appendChild(who);
+
+      const tdClass = document.createElement('td');
+      tdClass.textContent = mpsClassLabel(s);
+      const tdRoll = document.createElement('td');
+      tdRoll.textContent = s.roll || '—';
+      const tdContact = document.createElement('td');
+      tdContact.textContent = s.contact || '—';
+
+      const tdActions = document.createElement('td');
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+      const idBtn = document.createElement('button');
+      idBtn.className = 'mini';
+      idBtn.textContent = 'ID card';
+      idBtn.onclick = () => singleIdCard(s);
+      const adBtn = document.createElement('button');
+      adBtn.className = 'mini';
+      adBtn.textContent = 'Admit card';
+      adBtn.onclick = () => singleAdmitCard(s);
+      const editBtn = document.createElement('button');
+      editBtn.className = 'mini';
+      editBtn.textContent = 'Edit';
+      editBtn.onclick = () => { fillForm(s); window.scrollTo({top:0, behavior:'smooth'}); };
+      const delBtn = document.createElement('button');
+      delBtn.className = 'mini warn';
+      delBtn.textContent = 'Delete';
+      delBtn.onclick = () => {
+        if(!confirm('Delete ' + (s.name || 'this student') + ' from the local database?')) return;
+        students = students.filter(x => x.id !== s.id);
+        mpsSaveStudents(students);
+        if(editingId === s.id) resetForm();
+        renderAll();
+      };
+      actions.append(idBtn, adBtn, editBtn, delBtn);
+      tdActions.appendChild(actions);
+
+      tr.append(tdWho, tdClass, tdRoll, tdContact, tdActions);
+      rows.appendChild(tr);
+    });
+  }
+
+  function renderAll(){ renderClasses(); renderRows(); }
+
+  /* -------- Hand-off to the generators -------- */
+  function singleIdCard(s){
+    writeSessionJSON('mps-card-prefill', { student: s, sessionLabel: SESSION });
+    location.href = 'id-card.html';
+  }
+  function singleAdmitCard(s){
+    writeSessionJSON('mps-admit-prefill', { student: s });
+    location.href = 'admit-card.html';
+  }
+  function batchIdCards(list){
+    if(!list.length) return;
+    const payload = { students: mpsSortStudents(list), sides: ['front','back'], at: Date.now() };
+    if(!writeSessionJSON('mps-card-batch', payload)){
+      alert('Could not prepare the batch. Your browser may be blocking storage.');
+      return;
+    }
+    location.href = 'print.html';
+  }
+  function batchAdmitCards(list){
+    if(!list.length) return;
+    if(!writeSessionJSON('mps-admit-batch', { students: mpsSortStudents(list), at: Date.now() })){
+      alert('Could not prepare the batch. Your browser may be blocking storage.');
+      return;
+    }
+    location.href = 'admit-card.html';
+  }
+
+  /* -------- Photo handling (resize before storing) -------- */
+  $('sPhoto').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if(!file){ return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 360;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        photoData = canvas.toDataURL('image/jpeg', 0.82);
+        renderPhoto();
+      };
+      img.onerror = () => {
+        photoData = String(reader.result || '');
+        renderPhoto();
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  $('removePhoto').onclick = () => { photoData = ''; $('sPhoto').value = ''; renderPhoto(); };
+
+  /* -------- Save / cancel -------- */
+  $('studentForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = readForm();
+    if(!data.name || !data.grade){ setMsg('Name and class are required.', false); return; }
+    const idx = students.findIndex(s => s.id === data.id);
+    if(idx >= 0) students[idx] = data;
+    else students.push(data);
+    students = mpsSortStudents(students);
+    if(!mpsSaveStudents(students)){
+      setMsg('Could not save — browser storage is full or blocked. Try a smaller photo or free some space.', false);
+      return;
+    }
+    setMsg(idx >= 0 ? 'Student updated.' : 'Student added.');
+    resetForm();
+    renderAll();
+  });
+  $('cancelEdit').onclick = resetForm;
+
+  /* -------- Search -------- */
+  $('search').addEventListener('input', renderRows);
+
+  /* -------- Export / Import -------- */
+  $('exportBtn').onclick = () => {
+    if(!students.length){ alert('There are no students to export yet.'); return; }
+    const payload = { app: 'mps-students', version: 1, exportedAt: new Date().toISOString(), students };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mps-students-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+  $('importFile').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const parsed = JSON.parse(String(reader.result || '{}'));
+        const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.students) ? parsed.students : null);
+        if(!list) throw new Error('No student list found in this file.');
+        const clean = list.filter(s => s && typeof s === 'object' && s.name).map(s => ({
+          id: s.id || mpsNewStudentId(),
+          name: String(s.name).slice(0, 60),
+          grade: String(s.grade || '').slice(0, 12),
+          section: String(s.section || '').slice(0, 6),
+          roll: String(s.roll || '').slice(0, 24),
+          blood: String(s.blood || '').slice(0, 4),
+          dob: String(s.dob || '').slice(0, 30),
+          valid: String(s.valid || '').slice(0, 30),
+          father: String(s.father || '').slice(0, 60),
+          mother: String(s.mother || '').slice(0, 60),
+          contact: String(s.contact || '').slice(0, 40),
+          nameHi: String(s.nameHi || '').slice(0, 60),
+          fatherHi: String(s.fatherHi || '').slice(0, 60),
+          address: String(s.address || '').slice(0, 240),
+          photo: typeof s.photo === 'string' ? s.photo : '',
+          updatedAt: Number(s.updatedAt) || Date.now()
+        }));
+        if(!clean.length) throw new Error('The file did not contain any usable students.');
+        const byId = new Map(students.map(s => [s.id, s]));
+        clean.forEach(s => byId.set(s.id, s));
+        students = mpsSortStudents([...byId.values()]);
+        mpsSaveStudents(students);
+        renderAll();
+        alert('Imported ' + clean.length + ' student(s). Existing records with the same ID were updated.');
+      }catch(err){
+        alert('Import failed: ' + (err && err.message ? err.message : err));
+      } finally {
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  renderPhoto();
+  renderAll();
+})();
+</script></body></html>

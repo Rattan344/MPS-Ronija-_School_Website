@@ -1,4 +1,5 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Generate A4 admit cards (English and Hindi) for Mamta Public School exams.">
 <title>Generate Admit Card — Mamta Public School</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -38,12 +39,19 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 .qrwarn{display:none;border:.3mm dashed #b91c1c;color:#b91c1c;padding:2mm 1mm;font-size:2.2mm;line-height:1.3}
 #qrwarn[hidden]{display:none}
 .foot{background:#070f20;color:#f2dc94;text-align:center;font-size:2.8mm;padding:2.5mm 4mm;letter-spacing:.04em}
+#batchSheets{display:none}
 @page{size:A4;margin:0}
-@media print{html,body{height:297mm;overflow:hidden}body{background:#fff}.a4{height:296.5mm}.wrap2{display:block;padding:0}.stage{overflow:visible}.a4{box-shadow:none;margin:0}}
+@media print{html,body{height:297mm;overflow:hidden}body{background:#fff}.a4{height:296.5mm}.wrap2{display:block;padding:0}.stage{overflow:visible}.a4{box-shadow:none;margin:0}
+  html.batchprint,body.batchprint{height:auto!important;overflow:visible!important}
+  body.batchprint #sheet{display:none!important}
+  body.batchprint #batchSheets{display:block!important}
+  body.batchprint #batchSheets .a4{page-break-after:always;break-after:page}
+  body.batchprint #batchSheets .a4:last-child{page-break-after:auto;break-after:auto}
+}
 </style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
-<div class="top noprint"><div class="wrap"><b class="serif">Generate Admit Card</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
+<div class="top noprint"><div class="wrap"><b class="serif">Generate Admit Card</b><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><a class="back" href="dashboard.html">← Dashboard</a><button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button></div></div></div>
 <div class="wrap2">
-<div class="card noprint"><h3>Details</h3>
+<div class="card noprint"><h3>Details</h3><p style="font-size:12px;color:#5b7fae;margin:0 0 10px;line-height:1.5"><a href="students.html" style="color:#0e1b34;font-weight:600">← Student database</a> to load a saved student or a whole class.</p>
 <label>Exam name / परीक्षा का नाम</label><select id="exam"><option value="Annual Examination|वार्षिक परीक्षा">Annual Examination — वार्षिक परीक्षा</option><option value="Half-Yearly Examination|अर्धवार्षिक परीक्षा">Half-Yearly — अर्धवार्षिक परीक्षा</option><option value="Mid-Term Examination|मध्यावधि परीक्षा">Mid-Term — मध्यावधि परीक्षा</option><option value="Unit Test|इकाई परीक्षा">Unit Test — इकाई परीक्षा</option><option value="Pre-Board Examination|प्री-बोर्ड परीक्षा">Pre-Board — प्री-बोर्ड परीक्षा</option><option value="custom">Custom…</option></select>
 <div id="cbox" hidden><label>Custom name (English)</label><input id="cen"><label>Custom name (हिन्दी)</label><input id="chi" placeholder="जैसे: तिमाही परीक्षा"></div>
 <label>Session / सत्र</label><input id="sess" value="2026–27">
@@ -54,8 +62,8 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 <label>Timetable (date · subject · time)</label><div class="rows" id="rows"></div>
 <p><button class="btn ghost" style="color:#0e1b34" id="add">+ Add row</button></p>
 <label>Verification serial</label><div style="display:flex;gap:8px"><input id="serial" readonly><button class="btn ghost" style="color:#0e1b34" id="newser" title="New random serial">↻</button></div>
-<p style="font-size:12px;color:#5b7fae;margin:6px 0 16px">Each card gets a random serial and a QR code. Scanning it opens the verification page.</p><p id="ttlwarn" hidden style="font-size:12px;color:#b45309;background:#fdf8ec;border:1px solid #f2dc94;border-radius:8px;padding:9px 11px;margin:0 0 14px">The timetable is empty. Fill in at least one date, subject and time, or this card will print with a blank table.</p>
-<button class="btn dark" onclick="print()">Print A4</button> <a class="btn" id="testlink" target="_blank" rel="noopener">Test verification page ↗</a><p id="qrerr" hidden style="font-size:12px;color:#b91c1c;margin:10px 0 0">The QR library could not be loaded, so no scannable code was generated. Check your internet connection or an ad-blocker, then reload. Everything else on this page still works.</p><p id="urltxt" style="font-size:11px;color:#5b7fae;word-break:break-all;margin-top:12px"></p></div>
+<p style="font-size:12px;color:#5b7fae;margin:6px 0 16px">Each card gets a random serial and a QR code. Scanning it opens the verification page.</p><p id="ttlwarn" hidden aria-live="polite" style="font-size:12px;color:#b45309;background:#fdf8ec;border:1px solid #f2dc94;border-radius:8px;padding:9px 11px;margin:0 0 14px">The timetable is empty. Fill in at least one date, subject and time, or this card will print with a blank table.</p>
+<button class="btn dark" type="button" id="doPrint">Print A4</button> <a class="btn" id="testlink" target="_blank" rel="noopener">Test verification page ↗</a><p id="qrerr" hidden aria-live="polite" style="font-size:12px;color:#b91c1c;margin:10px 0 0">The QR library could not be loaded, so no scannable code was generated. Check your internet connection or an ad-blocker, then reload. Everything else on this page still works.</p><p id="urltxt" style="font-size:11px;color:#5b7fae;word-break:break-all;margin-top:12px"></p><div id="batchBox" hidden style="margin-top:16px;padding:14px;border:1px solid #dfe6f2;border-radius:10px;background:#f8fafc"><b id="batchTitle" style="font-size:14px;color:#182746">Batch</b><p style="font-size:12px;color:#5b7fae;margin:6px 0 10px;line-height:1.5">The exam name, session and timetable above are used for every card. Only the student details change, and each card gets its own serial + QR.</p><button class="btn dark" type="button" id="printAll" style="margin-right:8px">Print all</button><button class="btn ghost" type="button" id="batchClear" style="color:#0e1b34">Clear batch</button></div></div>
 
 <div class="stage"><div class="a4" id="sheet"><div class="frame">
 <div class="hd"><div class="logo-box"><img src="logo.png" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'M'}))"></div>
@@ -77,7 +85,7 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 <li>निर्धारित समय से पहले कक्ष न छोड़ें। परिणाम घोषित होने तक इस पत्र को सुरक्षित रखें।</li></ol></div></div>
 <div class="ft"><div class="sg">Class Teacher</div><div class="vq"><div id="qr"></div><div class="qrwarn" id="qrwarn">QR code unavailable<br>(library blocked)</div><p id="vs">—</p>Scan to verify</div><div class="sg">Principal</div></div>
 <div class="foot">MAMTA PUBLIC SCHOOL · RONIJA (GAUTAM BUDDH NAGAR), GREATER NOIDA, UTTAR PRADESH</div>
-</div></div></div></div>
+</div></div></div></div><div id="batchSheets" aria-hidden="true"></div>
 <datalist id="subj"><option value="Hindi / हिंदी"><option value="English / अंग्रेज़ी"><option value="Mathematics / गणित"><option value="Science / विज्ञान"><option value="Social Science / सामाजिक विज्ञान"><option value="Sanskrit / संस्कृत"><option value="Computer / कंप्यूटर"><option value="General Knowledge / सामान्य ज्ञान"><option value="Physics / भौतिकी"><option value="Chemistry / रसायन विज्ञान"><option value="Biology / जीव विज्ञान"><option value="EVS / पर्यावरण अध्ययन"></datalist>
 <script>
 const $=id=>document.getElementById(id),SECRET='mps-ronija-change-me-2026'; // keep identical in verify.html
@@ -108,14 +116,77 @@ function fit(){const sh=$('sheet'),fr=sh.firstElementChild;let k=1;sh.style.setP
 while(fr.scrollHeight>fr.clientHeight+1&&k>0.5){k=Math.round((k-0.04)*100)/100;sh.style.setProperty('--k',k)}}
 window.addEventListener('beforeprint',fit);
 ['name','cls','roll','father','nameh','fatherh','sess','cen','chi'].forEach(i=>$(i).oninput=up);$('exam').onchange=up;$('add').onclick=()=>{row();up()};$('newser').onclick=newSerial;
-let photoURL='';
+let photoURL='',currentPhoto='';
 function photoMode(){const up_=document.querySelector('[name=pm]:checked').value==='upload';$('upbox').hidden=!up_;
 const f=$('photo').files[0],ph=$('ph');
 if(up_&&f){ph.replaceChildren();const i=new Image();
 // Release the previous blob so a long session of students cannot pile up memory.
 if(photoURL){URL.revokeObjectURL(photoURL);photoURL=''}
 photoURL=URL.createObjectURL(f);i.src=photoURL;ph.appendChild(i)}
+else if(up_&&currentPhoto){ph.replaceChildren();const i=new Image();i.src=currentPhoto;i.alt='Student photo';ph.appendChild(i)}
 else ph.innerHTML='Affix recent<br>passport-size<br>photograph'}
 document.querySelectorAll('[name=pm]').forEach(r=>r.onchange=photoMode);$('photo').onchange=photoMode;
 for(let i=0;i<4;i++)row();newSerial();
+$('doPrint').addEventListener('click',()=>window.print());
+
+/* ---- student database hand-off ---- */
+let batchStudents=null;
+function applyStudent(s){
+  $('name').value=s.name||'';
+  $('cls').value=(s.grade?('Class '+s.grade):'')+(s.section?(' · '+s.section):'');
+  $('roll').value=s.roll||'';
+  $('father').value=s.father||'';
+  $('nameh').value=s.nameHi||'';
+  $('fatherh').value=s.fatherHi||'';
+  $('photo').value='';
+  currentPhoto=(typeof s.photo==='string')?s.photo:'';
+  photoMode();
+}
+const batch=readSessionJSON('mps-admit-batch',null);
+if(batch&&Array.isArray(batch.students)&&batch.students.length){
+  batchStudents=batch.students;
+  removeStoredJSON('mps-admit-prefill');
+  applyStudent(batchStudents[0]);
+  newSerial();
+  $('batchBox').hidden=false;
+  $('batchTitle').textContent=batchStudents.length+' student'+(batchStudents.length===1?'':'s')+' loaded from the database';
+  $('printAll').textContent='Print all '+batchStudents.length;
+}else{
+  const prefill=readSessionJSON('mps-admit-prefill',null);
+  if(prefill&&prefill.student){ applyStudent(prefill.student); removeStoredJSON('mps-admit-prefill'); up(); }
+}
+$('batchClear').onclick=()=>{ removeStoredJSON('mps-admit-batch'); batchStudents=null; $('batchBox').hidden=true; };
+$('printAll').addEventListener('click',()=>{
+  if(!batchStudents||!batchStudents.length) return;
+  const saved={name:$('name').value,cls:$('cls').value,roll:$('roll').value,father:$('father').value,
+    nameh:$('nameh').value,fatherh:$('fatherh').value,photo:currentPhoto,serial:$('serial').value};
+  const holder=$('batchSheets');
+  holder.replaceChildren();
+  batchStudents.forEach(st=>{
+    applyStudent(st);
+    newSerial(); // unique serial + QR for each card, then renders the sheet
+    const c=$('sheet').cloneNode(true);
+    c.removeAttribute('id');
+    c.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+    holder.appendChild(c);
+  });
+  // Restore the on-screen preview to the first student.
+  $('name').value=saved.name; $('cls').value=saved.cls; $('roll').value=saved.roll;
+  $('father').value=saved.father; $('nameh').value=saved.nameh; $('fatherh').value=saved.fatherh;
+  currentPhoto=saved.photo; $('photo').value=''; photoMode();
+  $('serial').value=saved.serial; up();
+  document.body.classList.add('batchprint');
+  document.documentElement.classList.add('batchprint');
+  window.print();
+});
+window.addEventListener('afterprint',()=>{
+  document.body.classList.remove('batchprint');
+  document.documentElement.classList.remove('batchprint');
+  const holder=$('batchSheets'); if(holder) holder.replaceChildren();
+  if(batchStudents){
+    removeStoredJSON('mps-admit-batch');
+    batchStudents=null;
+    $('batchBox').hidden=true;
+  }
+});
 </script></body></html>

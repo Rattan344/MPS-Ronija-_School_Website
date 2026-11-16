@@ -1,38 +1,249 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Schedule and ring school period bells for Mamta Public School.">
 <title>Ring Bell System — Mamta Public School</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
-<style>.clock{font:600 56px Fraunces,serif}.item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--n1)}
-.item.next{background:#fdf8ec;margin:0 -12px;padding:12px}.x{background:none;border:0;color:#b91c1c;cursor:pointer;font-size:18px}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
-<div class="top"><div class="wrap"><b class="serif">Ring Bell System</b><a class="back" href="dashboard.html">← Dashboard</a></div></div>
+<style>
+.clock{font:600 56px Fraunces,serif}
+.item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--n1)}
+.item.next{background:#fdf8ec;margin:0 -12px;padding:12px}
+.x{background:none;border:0;color:#b91c1c;cursor:pointer;font-size:18px}
+.hint{font-size:12px;color:#5b7fae;line-height:1.5;margin-top:10px}
+.status{font-size:12px;margin-top:8px;color:#5b7fae}
+.status.ok{color:#166534}.status.err{color:#b91c1c}
+.grid-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn.sm{padding:8px 14px;font-size:13px}
+#list{max-height:320px;overflow:auto}
+code{word-break:break-word;background:#eef1f6;border-radius:4px;padding:1px 4px;font-size:.94em}
+pre.code{white-space:pre-wrap;word-break:break-word;background:#0e1b34;color:#e6edf7;border-radius:8px;padding:12px;font-size:11.5px;line-height:1.5;margin:8px 0 0;overflow:auto}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
+<div class="top"><div class="wrap"><b class="serif">Ring Bell System</b><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><a class="back" href="dashboard.html">← Dashboard</a><button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button></div></div></div>
 <main class="wrap" style="padding:36px 24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px">
 <div class="card" style="text-align:center"><p class="k" style="color:#a97812">Current time</p><div class="clock" id="clk">--:--:--</div>
 <p id="nx" style="color:#243a5e">—</p><button class="btn dark" id="ring" style="font-size:18px;padding:16px 36px">🔔 Ring now</button>
-<p style="font-size:13px;color:#5b7fae;margin-top:18px">Keep this tab open for scheduled bells. Browsers need one click on this page to allow sound.</p></div>
-<div class="card"><h3>Bell schedule</h3><div style="display:flex;gap:8px;margin:14px 0"><input type="time" id="t"><input id="n" placeholder="Label (e.g. Period 1)"><button class="btn" id="add">Add</button></div>
-<div id="list"></div><p style="margin-top:14px"><button class="btn ghost" style="color:#0e1b34" id="def">Load sample schedule</button></p></div></main>
+<p class="hint">Keep this tab open for scheduled bells. Browsers need one click on this page before they allow sound.</p></div>
+<div class="card"><h3>Sound</h3>
+<label for="soundMode">Bell sound</label>
+<select id="soundMode"><option value="beep">Beep (default)</option><option value="chime">Chime (synth)</option><option value="school">School bell (synth)</option><option value="custom">Custom audio</option></select>
+<div id="customBox" style="display:none;margin-top:10px">
+  <label for="soundUrl">Audio file URL (recommended)</label>
+  <input type="url" id="soundUrl" placeholder="e.g. audio/assembly.mp3">
+  <p class="hint" style="margin-top:6px">Put the file in the repo (for example <code>audio/assembly.mp3</code>) and use a relative URL. This choice is saved for next time.</p>
+  <div class="grid-actions" id="sampleRow">
+    <button type="button" class="btn ghost sm" style="color:#0e1b34" data-sample="audio/school-bell.wav">Use school-bell sample</button>
+    <button type="button" class="btn ghost sm" style="color:#0e1b34" data-sample="audio/chime.wav">Use chime sample</button>
+  </div>
+  <label for="soundFile">…or upload audio (MP3/WAV/OGG)</label>
+  <input type="file" id="soundFile" accept="audio/*">
+  <p class="hint">An uploaded file works for this session only (browsers don't let a page re-open a local file after refresh).</p>
+  <button type="button" class="btn ghost sm" style="color:#0e1b34" id="previewSound">Preview sound</button>
+</div>
+<audio id="customAudio" style="display:none"></audio>
+<p class="hint">The browser needs one tap on this page before audio can start.</p></div>
+<div class="card"><h3>Hardware (optional)</h3>
+<p class="hint" style="margin-top:0">Pair a microcontroller (Arduino / ESP32) over <strong>Web Serial</strong> in Chrome or Edge on desktop. On every bell this page sends the text <code>RING\n</code> so your board can drive a relay or buzzer.</p>
+<div class="grid-actions">
+<button class="btn ghost" style="color:#0e1b34" id="hwConnect">Connect device</button>
+<button class="btn ghost" style="color:#0e1b34;display:none" id="hwDisconnect">Disconnect</button>
+<button class="btn ghost" style="color:#0e1b34;display:none" id="hwTest">Send test pulse</button>
+</div>
+<div class="status" id="hwStatus" aria-live="polite">Not connected.</div>
+<p class="hint">Arduino sketch example (relay/buzzer on pin 13):</p>
+<pre class="code">void setup(){ Serial.begin(9600); pinMode(13, OUTPUT); }
+
+void loop(){
+  if (Serial.readStringUntil('\n') == "RING") {
+    digitalWrite(13, HIGH);
+    delay(1000);
+    digitalWrite(13, LOW);
+  }
+}</pre></div>
+<div class="card" style="grid-column:1/-1"><h3>Bell schedule</h3>
+<div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap"><input type="time" id="t" style="max-width:160px"><input id="n" placeholder="Label (e.g. Period 1)" style="flex:1;min-width:160px"><button class="btn" id="add">Add</button></div>
+<div id="list"></div>
+<div class="grid-actions"><button class="btn ghost" style="color:#0e1b34" id="def">Load sample schedule</button><button class="btn ghost" style="color:#0e1b34" id="clr">Clear all</button></div>
+<p class="hint">Bells are saved in this browser (localStorage). If the tab is throttled in the background, missed bells ring once when you return to the tab.</p></div></main>
 <script>
 const $=id=>document.getElementById(id);
 const loadBells=()=>{try{const v=JSON.parse(localStorage.getItem('mps-bells')||'[]');return Array.isArray(v)?v.filter(b=>b&&typeof b.t==='string'):[]}catch(e){console.warn('Unreadable bell schedule, starting empty.',e);return[]}};
 let bells=loadBells();
+
+/* ---------------- Audio ---------------- */
 // One shared AudioContext. Creating a new one per beep hits the browser's
 // concurrent-context limit (about six) and then the bell goes silent.
 let actx=null;
 function audio(){if(!actx){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;actx=new AC()}
 if(actx.state==='suspended')actx.resume().catch(()=>{});return actx}
-const save=()=>{localStorage.setItem('mps-bells',JSON.stringify(bells));render()};
-function beep(){const a=audio();if(!a)return;
-[0,.7,1.4].forEach(d=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);
-g.gain.setValueAtTime(.4,a.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d+.6);o.start(a.currentTime+d);o.stop(a.currentTime+d+.6)})}
-function render(){bells.sort((a,b)=>a.t.localeCompare(b.t));const now=new Date().toTimeString().slice(0,5);const nx=bells.find(b=>b.t>now);
-$('list').replaceChildren(...bells.map((b,i)=>{const d=document.createElement('div');d.className='item'+(b===nx?' next':'');
-d.innerHTML='<span><b></b> &nbsp;<span class="lbl"></span></span><button class="x" title="Delete">✕</button>';
-// textContent, not innerHTML: stored times must never be parsed as markup.
-d.querySelector('b').textContent=b.t;d.querySelector('.lbl').textContent=b.n||'';d.querySelector('.x').onclick=()=>{bells.splice(i,1);save()};return d}));
-$('nx').textContent=nx?`Next bell: ${nx.t} — ${nx.n}`:'No more bells today'}
-$('add').onclick=()=>{if(!$('t').value)return;bells.push({t:$('t').value,n:$('n').value||'Bell'});$('t').value=$('n').value='';save()};
+
+function beepTone(){
+  const a=audio();if(!a)return false;
+  [0,.7,1.4].forEach(d=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);
+  g.gain.setValueAtTime(.4,a.currentTime+d);g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d+.6);o.start(a.currentTime+d);o.stop(a.currentTime+d+.6)});
+  return true;
+}
+function chimeTone(){
+  const a=audio();if(!a)return false;
+  const notes=[{f:659.25,t:0},{f:523.25,t:.55},{f:783.99,t:1.1}];
+  notes.forEach(({f,t})=>{
+    [1,2,3].forEach((mult,idx)=>{
+      const o=a.createOscillator(),g=a.createGain();
+      o.type='sine';o.frequency.value=f*mult;
+      o.connect(g);g.connect(a.destination);
+      const peak=.22/Math.pow(mult,1.4);
+      g.gain.setValueAtTime(.0001,a.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(peak,a.currentTime+t+.02);
+      g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+t+1.9);
+      o.start(a.currentTime+t);o.stop(a.currentTime+t+2);
+    });
+  });
+  return true;
+}
+// Metallic school-bell ring: inharmonic partials with a long decay.
+function schoolBellTone(){
+  const a=audio();if(!a)return false;
+  const base=523.25, partials=[[1,1],[2.02,.5],[2.98,.32],[4.1,.18],[5.4,.1]];
+  [0,.55,1.1].forEach((start,hit)=>{
+    partials.forEach(([mult,amp])=>{
+      const o=a.createOscillator(),g=a.createGain();
+      o.type='sine';o.frequency.value=base*mult*(1+hit*0.002);
+      o.connect(g);g.connect(a.destination);
+      const peak=.30*amp;
+      g.gain.setValueAtTime(.0001,a.currentTime+start);
+      g.gain.exponentialRampToValueAtTime(peak,a.currentTime+start+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+start+1.6);
+      o.start(a.currentTime+start);o.stop(a.currentTime+start+1.7);
+    });
+  });
+  return true;
+}
+
+/* Sound preference persists (mode + custom URL only; uploads cannot persist). */
+const SOUND_KEY='mps-bell-sound';
+function loadSoundPrefs(){
+  try{
+    const p=JSON.parse(localStorage.getItem(SOUND_KEY)||'{}');
+    if(p && typeof p.mode==='string' && ['beep','chime','school','custom'].includes(p.mode)){
+      $('soundMode').value=p.mode;
+    }
+    if(p && typeof p.url==='string') $('soundUrl').value=p.url;
+  }catch(e){/* ignore */}
+  syncSoundBox();
+}
+function saveSoundPrefs(){
+  try{localStorage.setItem(SOUND_KEY,JSON.stringify({mode:$('soundMode').value,url:$('soundUrl').value.trim()}))}catch(e){}
+}
+function syncSoundBox(){
+  const mode=$('soundMode').value;
+  $('customBox').style.display = mode==='custom' ? 'block' : 'none';
+  if(mode==='custom'){
+    const url=$('soundUrl').value.trim();
+    if(url && $('customAudio').getAttribute('src')!==url) $('customAudio').src=url;
+  }
+}
+$('soundMode').onchange=()=>{syncSoundBox();saveSoundPrefs()};
+$('soundUrl').oninput=()=>{syncSoundBox();saveSoundPrefs()};
+$('soundFile').onchange=e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  $('customAudio').src=URL.createObjectURL(f);
+  $('soundMode').value='custom';
+  syncSoundBox();saveSoundPrefs();
+};
+$('previewSound').onclick=()=>{ ringBell(); };
+document.getElementById('sampleRow').addEventListener('click', e => {
+  const btn = e.target.closest('[data-sample]');
+  if(!btn) return;
+  $('soundUrl').value = btn.dataset.sample;
+  $('soundMode').value = 'custom';
+  syncSoundBox(); saveSoundPrefs();
+});
+
+/* ---------------- Web Serial (optional hardware) ---------------- */
+let port=null, writer=null, hwConnected=false;
+function setHwStatus(msg, cls){
+  const el=$('hwStatus'); el.textContent=msg; el.className='status'+(cls?(' '+cls):'');
+}
+const serialSupported=('serial' in navigator);
+if(!serialSupported){
+  $('hwConnect').disabled=true;
+  setHwStatus('Web Serial is not available in this browser. Use Chrome or Edge on desktop, over HTTPS or localhost.','');
+}
+$('hwConnect').onclick=async()=>{
+  if(!serialSupported)return;
+  try{
+    port=await navigator.serial.requestPort();
+    await port.open({baudRate:9600});
+    writer=port.writable.getWriter();
+    hwConnected=true;
+    $('hwConnect').style.display='none';
+    $('hwDisconnect').style.display='inline-block';
+    $('hwTest').style.display='inline-block';
+    setHwStatus('Connected. Ready to send RING on each bell.','ok');
+  }catch(err){
+    setHwStatus('Could not connect: '+(err&&err.message?err.message:err),'err');
+  }
+};
+$('hwDisconnect').onclick=async()=>{
+  try{ if(writer){writer.releaseLock();writer=null;} if(port){await port.close();port=null;} }catch(err){console.warn(err)}
+  hwConnected=false;
+  $('hwConnect').style.display='inline-block';
+  $('hwDisconnect').style.display='none';
+  $('hwTest').style.display='none';
+  setHwStatus('Disconnected.','');
+};
+async function hwPulse(){
+  if(!hwConnected||!writer)return false;
+  try{
+    await writer.write(new TextEncoder().encode('RING\n'));
+    return true;
+  }catch(err){
+    setHwStatus('Send failed: '+(err&&err.message?err.message:err),'err');
+    hwConnected=false;
+    return false;
+  }
+}
+$('hwTest').onclick=async()=>{
+  const ok=await hwPulse();
+  setHwStatus(ok?'Test pulse sent (RING).':'Not connected.');
+};
+
+/* ---------------- Ring ---------------- */
+function ringBell(){
+  const mode=$('soundMode').value;
+  let played=false;
+  if(mode==='chime') played=chimeTone();
+  else if(mode==='school') played=schoolBellTone();
+  else if(mode==='custom'){
+    const el=$('customAudio');
+    if(el && el.getAttribute('src')){
+      el.currentTime=0;
+      el.play().then(()=>{}).catch(()=>{ beepTone(); });
+      played=true;
+    }
+  }
+  if(!played) played=beepTone();
+  hwPulse();
+  return played;
+}
+$('ring').onclick=ringBell;
+
+/* ---------------- Schedule ---------------- */
+const save=()=>{try{localStorage.setItem('mps-bells',JSON.stringify(bells))}catch(e){console.warn('Could not save bells.',e)}render()};
+function render(){
+  bells.sort((a,b)=>a.t.localeCompare(b.t));
+  const now=new Date().toTimeString().slice(0,5);const nx=bells.find(b=>b.t>now);
+  $('list').replaceChildren(...bells.map((b,i)=>{const d=document.createElement('div');d.className='item'+(b===nx?' next':'');
+    d.innerHTML='<span><b></b> &nbsp;<span class="lbl"></span></span><button class="x" title="Delete" aria-label="Delete bell">✕</button>';
+    // textContent, not innerHTML: stored times must never be parsed as markup.
+    d.querySelector('b').textContent=b.t;d.querySelector('.lbl').textContent=b.n||'';d.querySelector('.x').onclick=()=>{bells.splice(i,1);save()};return d}));
+  $('nx').textContent=nx?`Next bell: ${nx.t} — ${nx.n}`:'No more bells today';
+}
+$('add').onclick=()=>{if(!$('t').value)return;bells.push({t:$('t').value,n:($('n').value||'Bell').trim()});$('t').value='';$('n').value='';save()};
+$('n').addEventListener('keydown',e=>{if(e.key==='Enter')$('add').click()});
 $('def').onclick=()=>{bells=[['08:00','Assembly'],['08:30','Period 1'],['09:10','Period 2'],['09:50','Period 3'],['10:30','Short break'],['10:50','Period 4'],['11:30','Period 5'],['12:10','Lunch'],['12:50','Period 6'],['13:30','Period 7'],['14:00','School off']].map(([t,n])=>({t,n}));save()};
-$('ring').onclick=beep;
+$('clr').onclick=()=>{if(confirm('Remove all bells?')){bells=[];save()}};
+
 const pad=n=>String(n).padStart(2,'0');
 const mins=hhmm=>{const m=/^(\d{1,2}):(\d{2})$/.exec(String(hhmm||'').trim());if(!m)return NaN;return +m[1]*60+ +m[2]};
 let lastMinute='';
@@ -46,7 +257,7 @@ function ringIfDue(){
  const from=lastMinute?mins(lastMinute):NaN,to=mins(hm);
  lastMinute=hm;
  const due=bells.filter(b=>{const m=mins(b.t);return !Number.isNaN(m)&&(Number.isNaN(from)?m===to:(m>from&&m<=to))});
- if(due.length)beep();
+ if(due.length)ringBell();
 }
 function tick(){const d=new Date();
  $('clk').textContent=pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
@@ -55,5 +266,6 @@ function tick(){const d=new Date();
 setInterval(tick,1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
 window.addEventListener('focus',tick);
+loadSoundPrefs();
 tick();render();
 </script></body></html>
