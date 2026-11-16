@@ -45,7 +45,7 @@ To run it again by hand: **Actions → Deploy to GitHub Pages → Run workflow**
 
 ## Security — please read
 
-**The admin login is not real authentication.** GitHub Pages only serves static files, so credentials are checked in the browser and a session is stored locally (`localStorage` key `mps-auth`, with a 30‑day expiry by default). Anyone can read the source/console and bypass this. Treat it as a convenience lock only.
+**The admin login is not real authentication.** GitHub Pages only serves static files, so credentials are checked in the browser and a session is stored locally (`localStorage` key `mps-auth`) until the user presses **Logout** on that computer. Anyone can read the source/console and bypass this. Treat it as a convenience lock only. Admin data also needs `localStorage` and IndexedDB; if the browser blocks site storage, sign-in stops with a warning instead of looping.
 
 Do this now:
 
@@ -60,7 +60,7 @@ Previously bundled files `old_index.html` and `Master_Engineeri.pdf` were remove
 
 ## Changing things
 
-**New academic session.** Open `sessions.html` → **Start next session**. It creates the new session label, promotes every active student one class up (Class XII becomes *Graduated*), updates ID-card validity, and makes the new session active. Old marks, fees and awards stay attached to their original session for history. Also update `SESSION_START` near the top of the script in `print.html` and `id-card.html` (currently `2026` → “2026–27”) so newly printed cards show the right default session.
+**New academic session.** Open `sessions.html` → **Start next session**. It creates the new session label, promotes every active student one class up (Class XII becomes *Graduated*), updates ID-card validity, and makes the new session active. Old marks, fees and awards stay attached to their original session for history. The ID-card editor, batch printer and admit-card page all read the active session automatically, so there is no year to edit in the code. A guard warns if the same promotion is attempted twice.
 
 **Bell schedule.** `bell-system.html` stores the schedule in `localStorage` under `mps-bells`. Click **Load sample schedule** for the standard day. Browsers block sound until you interact with the page; click **Ring now** once after load if needed.
 
@@ -120,7 +120,7 @@ Storage keys: `mps-students`, `mps-marks`, `mps-fees`, `mps-awards`, `mps-config
 - **Analytics strip** shows active students, classes, outstanding fees and average score at a glance.
 - **Bulk actions** on selected students (or *Select all filtered*): ID cards, admit cards, assign class/section, promote, add a fee charge, set status, delete.
 - **Class quick print**: choose a class → *Print ID cards* (opens `print.html`, fronts then backs) or *Print admit cards* (opens `admit-card.html` with the class loaded). Set the exam/timetable once, then **Print all**.
-- **Import/Export students** moves student details and photos as JSON. Importing matches admission numbers and updates existing students. For marks/fees/awards too, use the **full backup** in `sessions.html`.
+- **Import/Export students** moves student details and photos as JSON. Importing matches admission numbers and ids, sanitizes each record, drops duplicates/orphan links, and updates existing students. For marks/fees/awards too, use the **full backup** in `sessions.html`.
 - Photos are downscaled to ~180 px WebP (JPEG fallback) and stored in IndexedDB, so the main student records stay small. If IndexedDB is unavailable, a compressed copy is kept inline as a fallback. If saving fails, storage is full — download a backup, then use **Compress stored photos** in Sessions or remove some photos.
 
 ### Fees (`fees.html`)
@@ -133,32 +133,33 @@ Storage keys: `mps-students`, `mps-marks`, `mps-fees`, `mps-awards`, `mps-config
 
 ### Marks (`marks.html`)
 
-- Pick a class and an exam name (existing exams are suggested), enter obtained marks out of a custom maximum, and save the whole class at once.
+- Pick a class and an exam name (existing exams are suggested), enter obtained marks out of a custom maximum, and save the whole class at once. Marks above the maximum are rejected instead of being saved silently.
 - Percentages, grades and class ranks are computed automatically. Scores feed class toppers, school toppers, awards and analytics.
+- New marks remember the class/section at exam time, so all-time and class-wise honours stay with the class where the result was earned after a promotion. Older records fall back to the student's current class.
 - Leaving a marks box empty removes that student's record for the exam.
 
 ### Awards and scholarships (`awards.html`)
 
 - Register awards and scholarships with title, category, session, amount, date and note.
-- Live **School top 10** and **Class top 3** for the current session, plus **All-time top 10** across every session. Click **Award** on a ranked student to prefill the form.
+- Live **School top 10** and **Class top 3** for the current session, plus **All-time top 10** across every session. Class boards use the class stored on each mark, so previous-year toppers stay in their original class. Click **Award** on a ranked student to prefill the form.
 - Export the filtered register as CSV.
 
 ### Analytics (`analytics.html`)
 
 - KPI cards for active students, fee collection %, outstanding, average score and awards.
-- Fee collection bars overall and by class, class-wise report (strength, average, highest, topper, billed/collected/due, collection %, awards), session and all-time top 10, highest dues and students below 33%.
+- Fee collection bars overall and by class, class-wise report (strength, average, highest, topper, billed/collected/due, collection %, awards), session and all-time top 10, highest dues and students below 33%. Averages and the follow-up list use each student's latest result; honour boards use best-ever scores.
 - Export the class-wise report as CSV.
 
 ### Sessions and promotion (`sessions.html`)
 
 - Set the active session; add past/planned sessions; see session-wise counts and money.
-- Promote one class to any target class, or **Start next session** to promote the whole school and mark Class XII as graduated.
-- **Download full backup**: one JSON file with students, marks, fees, awards, photos and session settings. **Restore** replaces everything on this computer after confirmation. **Compress stored photos** shrinks existing photos in place.
+- Promote one class to any target class, or **Start next session** to promote the whole school and mark Class XII as graduated. A double-promotion guard asks for confirmation if the same session was already started on this computer.
+- **Download full backup**: one JSON file with students, marks, fees, awards, photos and session settings. **Restore** validates and sanitizes records, then replaces everything on this computer after confirmation. **Compress stored photos** shrinks existing photos in place.
 - Clean orphan records, inspect approximate storage size, or erase all school data (double confirmation).
 
 Uploaded photos are resized automatically. Batch hand-off keys are `mps-card-batch`, `mps-admit-batch`, plus single-student `mps-card-prefill` / `mps-admit-prefill`; they are cleared automatically when used.
 
-**ID card data (keys).** The editor stores draft/print data under `mps-card-data` (student/family/school fields, layout, photo data URL) and `mps-card-print` (`{ sides: [...] }`), in `localStorage` so the print tab can read them. Printing a single card clears any stale class batch; use **Print Front/Back/Both** from the editor to open `print.html`.
+**ID card data (keys).** The editor stores draft/print data under `mps-card-data` (student/family/school fields, layout, photo data URL) and `mps-card-print` (`{ sides: [...] }`), in `localStorage` so the print tab can read them. Printing a single card clears any stale class batch, and `print.html` always gives the newer request priority; use **Print Front/Back/Both** from the editor to open `print.html`.
 
 **Admit card verification link.** Cards get a random serial and QR code opening `verify.html` with details in the URL. Use **Test verification page ↗** before printing. QR/fonts load from public CDNs; if blocked, pages warn and continue where possible.
 
@@ -171,7 +172,7 @@ Uploaded photos are resized automatically. Batch hand-off keys are `mps-card-bat
 - Print dialog: **100% scale**, no headers/footers.
 - Page size is set to CR80 for the chosen layout: **vertical** card → 53.98×85.6 mm portrait page, **horizontal** card → 85.6×53.98 mm landscape page. Choose CR80 if available; otherwise print on A4 at 100% and cut (do **not** “Fit to page”).
 - Use **Print Front / Print Back / Print Both** from `id-card.html` (or ensure `mps-card-data`/`mps-card-print` exist). Opening `print.html` directly with no data shows a warning.
-- **Export:** on `print.html` you can download **Front (PNG)**, **Back (PNG)**, or **Both (PDF)** (CR80-sized pages). Export is available for single cards; a class batch hides it. Requires internet for html2canvas/jsPDF CDNs on first load in some setups; if offline, use browser Print/Save as PDF.
+- **Export:** on `print.html` you can download **Front (PNG)**, **Back (PNG)**, or **Both (PDF)** (CR80-sized pages, portrait or landscape to match the card layout). Export is available for single cards; a class batch hides it. Requires internet for html2canvas/jsPDF CDNs on first load in some setups; if offline, use browser Print/Save as PDF.
 - **Class batch** (from `students.html`): fronts are rendered first, then backs, one card per page. Use **Fronts only** / **Backs only** / **Front + back** in the batch bar, then run the matching print jobs (e.g. print fronts, flip the stack, print backs for duplex).
 
 **Admit card (`admit-card.html`)**

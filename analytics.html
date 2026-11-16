@@ -132,8 +132,8 @@
       feeMap.set(f.studentId, o);
     });
 
-    /* best score this session and all-time, per student */
-    const bestSession = new Map(), bestAll = new Map();
+    /* Best score (for honours) and latest score (for current averages). */
+    const latestSession = new Map(), bestSession = new Map(), bestAll = new Map();
     marks.forEach(m => {
       const pct = mpsPercentFromMark(m);
       if(pct == null) return;
@@ -142,7 +142,17 @@
       if(m.session === session){
         const prev = bestSession.get(m.studentId);
         if(!prev || pct > prev.pct) bestSession.set(m.studentId, { pct, mark: m });
+        const prevLatest = latestSession.get(m.studentId);
+        if(!prevLatest || (Number(m.updatedAt)||0) >= (Number(prevLatest.mark.updatedAt)||0)){
+          latestSession.set(m.studentId, { pct, mark: m });
+        }
       }
+    });
+
+    const awardCounts = new Map();
+    awards.forEach(a => {
+      if(a.session !== session) return;
+      awardCounts.set(a.studentId, (awardCounts.get(a.studentId) || 0) + 1);
     });
 
     /* class grouping */
@@ -154,18 +164,18 @@
       activeList.forEach(s => {
         const f = feeMap.get(s.id);
         if(f){ billed += f.billed; paid += f.paid; }
-        const b = bestSession.get(s.id);
+        const b = latestSession.get(s.id);
         if(b){ scored++; sum += b.pct; if(high == null || b.pct > high) high = b.pct; if(!top || b.pct > top.pct) top = { student:s, pct:b.pct }; }
-        awardCount += awards.filter(a => a.studentId === s.id && a.session === session).length;
+        awardCount += awardCounts.get(s.id) || 0;
       });
       billed = Math.round(billed*100)/100; paid = Math.round(paid*100)/100;
       const due = Math.max(0, Math.round((billed-paid)*100)/100);
-      return { c, list, activeList, billed, paid, due, scored, avg: scored ? Math.round(sum/scored*10)/10 : null, high, top, awardCount };
+      return { c, list, activeList, billed, paid, due, scored, sum, avg: scored ? Math.round(sum/scored*10)/10 : null, high, top, awardCount };
     });
 
     const totals = rows.reduce((t,r) => {
       t.students += r.activeList.length; t.billed += r.billed; t.paid += r.paid; t.due += r.due;
-      t.scored += r.scored; t.sum += (r.avg||0)*r.scored; t.awards += r.awardCount;
+      t.scored += r.scored; t.sum += r.sum; t.awards += r.awardCount;
       if(r.high != null && (t.high == null || r.high > t.high)) t.high = r.high;
       return t;
     }, { students:0, billed:0, paid:0, due:0, scored:0, sum:0, awards:0, high:null });
@@ -184,12 +194,14 @@
       return due > 0 ? { student:s, due } : null;
     }).filter(Boolean).sort((a,b) => b.due - a.due);
 
+    // "Needs help" uses the latest result, not a lucky best score from an
+    // earlier exam. Rank boards intentionally use best-ever scores.
     const low = active.map(s => {
-      const b = bestSession.get(s.id);
+      const b = latestSession.get(s.id);
       return b && b.pct < 33 ? { student:s, pct:b.pct } : null;
     }).filter(Boolean).sort((a,b) => a.pct - b.pct);
 
-    computed = { rows, totals, rankSession: rank(bestSession), rankAll: rank(bestAll), defaulters, low, activeCount: active.length, feeMap, bestSession, bestAll };
+    computed = { rows, totals, rankSession: rank(bestSession), rankAll: rank(bestAll), defaulters, low, activeCount: active.length, feeMap, bestSession, bestAll, latestSession };
   }
 
   /* -------- render -------- */

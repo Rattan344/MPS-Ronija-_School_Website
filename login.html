@@ -10,26 +10,38 @@
 .warn{margin:16px 0 0;padding:10px 12px;border-radius:8px;background:#fdf8ec;border:1px solid #f2dc94;color:#875a11;font-size:12px;line-height:1.5}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="box"><h1 style="font-size:28px">Admin Login</h1><p style="color:#243a5e;margin:6px 0 10px">Mamta Public School, Ronija</p>
 <form id="f" autocomplete="off">
-<label for="u">Login ID</label><input id="u" name="username" autocomplete="username" required>
+<label for="u">Login ID</label><input id="u" name="username" autocomplete="username" required autofocus>
 <label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
 <label for="c">Captcha</label><div class="row"><canvas id="cap" width="200" height="56" aria-label="Captcha image" role="img"></canvas><button type="button" class="btn ghost" id="rf" style="color:#0e1b34;padding:9px 14px" title="New captcha" aria-label="Get a new captcha">↻</button></div>
 <input id="c" aria-label="Captcha code" placeholder="Type the characters above" style="margin-top:10px" required>
 <p id="err" role="alert" aria-live="polite"></p><button class="btn dark" style="width:100%;margin-top:6px">Sign in</button></form>
-<p class="warn"><b>Security note:</b> this login runs entirely in your browser. The credentials below are readable in the page source by anyone, so they only keep casual visitors out of the admin tools — they are not real protection.</p>
+<p class="warn"><b>Security note:</b> this login runs entirely in your browser. The credentials are readable in the page source by anyone, so they only keep casual visitors out of the admin tools — they are not real protection. You stay signed in on this computer until you press <b>Logout</b>.</p>
 <p style="text-align:center;margin:18px 0 0"><a href="index.html" style="font-size:14px;color:#243a5e">← Back to website</a></p></div>
 <script src="common.js"></script>
 <script>
-// If already logged in (not expired), skip captcha/password screen.
+// Already signed in on this computer? Skip the captcha/password screen.
 if (typeof isAuthed === 'function' && isAuthed()) {
   location.replace('dashboard.html');
+}
+// Admin data and the login both need localStorage. Private/blocked storage
+// used to let sign-in "succeed" and immediately bounce back here.
+function storageAvailable(){
+  try{
+    const k='__mps_storage_test__';
+    localStorage.setItem(k,'1');
+    localStorage.removeItem(k);
+    return true;
+  }catch(error){ return false; }
 }
 /* CHANGE THESE before use. Anyone can read them via View Source, so treat this
    as a convenience lock only. See the Security section of README.md. */
 const ADMIN_ID='MPS@Admin#2026', ADMIN_PASS='Ron!ja$Gr8Noida*417';
-// const ADMIN_ID='55', ADMIN_PASS='55';
 let code='';
 function draw(){const cv=document.getElementById('cap'),x=cv.getContext('2d'),s='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 code='';for(let i=0;i<6;i++)code+=s[Math.floor(Math.random()*s.length)];
+// The login is a convenience lock, not real security. Exposing the code to
+// assistive technology makes the captcha usable without giving up anything.
+cv.setAttribute('aria-label','Captcha code: '+code.split('').join(' '));
 x.fillStyle='#f2f5fb';x.fillRect(0,0,200,56);
 for(let i=0;i<7;i++){x.strokeStyle=`hsl(${Math.random()*360},50%,55%)`;x.lineWidth=1.5;x.beginPath();x.moveTo(Math.random()*200,Math.random()*56);x.bezierCurveTo(Math.random()*200,Math.random()*56,Math.random()*200,Math.random()*56,Math.random()*200,Math.random()*56);x.stroke()}
 for(let i=0;i<code.length;i++){x.save();x.translate(20+i*28,34+Math.random()*8-4);x.rotate((Math.random()-.5)*.7);x.font=`bold ${26+Math.random()*6}px Georgia`;x.fillStyle='#182746';x.fillText(code[i],0,0);x.restore()}
@@ -40,5 +52,6 @@ document.getElementById('f').onsubmit=e=>{e.preventDefault();const err=document.
  err.textContent='';
  if(document.getElementById('c').value.trim().toUpperCase()!==code){err.textContent='Captcha did not match. Try the new one.';draw();document.getElementById('c').value='';return}
  if(id!==ADMIN_ID||pass!==ADMIN_PASS){err.textContent='Incorrect login ID or password.';draw();document.getElementById('c').value='';return}
- mpsSetAuth();location.href='dashboard.html'};
+  if(!storageAvailable()){err.textContent='This browser is blocking site storage, so admin data cannot be saved on this computer. Allow site data for this page and reload.';return}
+  mpsSetAuth(); location.href='dashboard.html'};
 </script></body></html>

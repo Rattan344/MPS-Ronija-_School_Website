@@ -115,8 +115,13 @@
     const exam = $('exam').value.trim();
     const map = new Map();
     if(!exam) return map;
+    const c = currentClass();
     mpsMarks().forEach(m => {
-      if(m.session === session && m.exam === exam) map.set(m.studentId, m);
+      if(m.session !== session || m.exam !== exam) return;
+      // Marks remember the class at exam time. A promoted student should not
+      // carry last year's/another class's result into this class's table.
+      if(m.grade && c.grade && (String(m.grade) !== String(c.grade) || String(m.section||'') !== String(c.section||''))) return;
+      map.set(m.studentId, m);
     });
     return map;
   }
@@ -142,7 +147,7 @@
     const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length*10)/10 : null;
     const high = scored.length ? Math.max.apply(null, scored) : null;
     $('kpis').innerHTML = [
-      kpi(list.length, 'Students in class', currentClass().grade ? 'Class ' + currentClass().grade : 'choose a class'),
+      kpi(list.length, 'Students in class', currentClass().grade ? mpsClassLabel(currentClass()) : 'choose a class'),
       kpi(scored.length, 'Marks entered', $('exam').value.trim() || 'no exam name', 'info'),
       kpi(avg == null ? '—' : avg + '%', 'Class average', scored.length + ' scored'),
       kpi(high == null ? '—' : high + '%', 'Highest score', high == null ? '' : mpsGradeLetter(high), 'gold')
@@ -171,14 +176,14 @@
   function render(){
     lastExam = $('exam').value.trim();
     writeSessionJSON('mps-marks-exam', lastExam);
-    writeSessionJSON('mps-marks-class', $('cls').value);
+    if($('cls').value) writeSessionJSON('mps-marks-class', $('cls').value);
     const q = $('q').value.trim().toLowerCase();
     const all = classStudents();
     const list = all.filter(s => !q || [s.name, s.adm, s.roll].join(' ').toLowerCase().includes(q));
     const marks = marksMap();
     const { ranks, list: ranked } = classRanking();
     const c = currentClass();
-    $('tableTitle').textContent = 'Marks · ' + (c.grade ? 'Class ' + c.grade + (c.section ? ' · ' + c.section : '') : 'choose a class');
+    $('tableTitle').textContent = 'Marks · ' + (c.grade ? mpsClassLabel(c) : 'choose a class');
     $('rows').innerHTML = list.map((s,i) => rowHtml(s, i, marks, ranks)).join('');
     mpsHydrateAvatars($('rows'));
     $('empty').hidden = list.length > 0;
@@ -208,7 +213,8 @@
     const marks = mpsMarks();
     const index = new Map();
     marks.forEach((m,i) => index.set(m.studentId + '|' + m.session + '|' + m.exam, i));
-    let saved = 0;
+    const c = currentClass();
+    let saved = 0, firstBad = null, firstBadName = '';
     const rows = ids ? ids.map(id => document.querySelector('tr[data-id="' + id + '"]')).filter(Boolean) : Array.from(document.querySelectorAll('#rows tr'));
     rows.forEach(tr => {
       const id = tr.dataset.id;
@@ -224,8 +230,15 @@
         return;
       }
       const obtained = Number(obtRaw);
-      if(!isFinite(obtained) || obtained < 0 || !(max > 0)) return;
-      const record = { id: mpsNewId('mk'), studentId: id, session, exam, obtained, max, updatedAt: Date.now() };
+      if(!isFinite(obtained) || obtained < 0 || !(max > 0) || obtained > max){
+        if(!firstBad){ firstBad = tr.querySelector('.obt'); firstBadName = (tr.querySelector('.who b') || {}).textContent || 'a student'; }
+        return;
+      }
+      const record = {
+        id: mpsNewId('mk'), studentId: id, session, exam, obtained, max,
+        grade: c.grade, section: c.section,
+        updatedAt: Date.now()
+      };
       if(index.has(key)){
         const prev = marks[index.get(key)];
         record.id = prev.id || record.id;
@@ -236,6 +249,12 @@
       }
       saved++;
     });
+    if(firstBad){
+      alert('Marks must be between 0 and the "Out of" value. Please check ' + firstBadName + '. Nothing was saved.');
+      firstBad.focus();
+      firstBad.select();
+      return;
+    }
     if(!mpsSaveMarks(marks)){ alert('Could not save marks — storage may be full.'); return; }
     render();
     if(typeof saved === 'number') $('savedInfo').textContent = 'Saved ' + saved + ' record(s) for ' + exam + '.';

@@ -188,6 +188,7 @@
   let stats = new Map();
   let editingId = null;
   let photoData = '';
+  let photoDirty = false;
   let page = 0;
   let pageSize = 50;
   let selected = new Set();
@@ -232,7 +233,7 @@
   /* ---------- KPIs ---------- */
   function renderKpis(){
     const active = students.filter(mpsIsActive);
-    const classes = mpsClassListFrom(students);
+    const classes = mpsClassListFrom(active);
     let due = 0, scored = 0, scoreSum = 0;
     active.forEach(s => { const st = stats.get(s.id); if(st){ due += st.due; if(st.pct != null){ scoreSum += st.pct; scored++; } } });
     const avg = scored ? Math.round(scoreSum/scored*10)/10 : null;
@@ -292,7 +293,7 @@
       const ia = mpsGradeIndex(a), ib = mpsGradeIndex(b);
       return (ia<0?999:ia) - (ib<0?999:ib) || a.localeCompare(b);
     });
-    $('fClass').innerHTML = '<option value="">All classes</option>' + gradeSorted.map(g => '<option value="' + esc(g) + '">Class ' + esc(g) + '</option>').join('');
+    $('fClass').innerHTML = '<option value="">All classes</option>' + gradeSorted.map(g => '<option value="' + esc(g) + '">' + esc(g.toLowerCase() === 'graduated' ? 'Graduated' : 'Class ' + g) + '</option>').join('');
     $('fClass').value = grades.has(curClass) ? curClass : '';
     $('fSection').innerHTML = '<option value="">All</option>' + Array.from(sections).sort().map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
     $('fSection').value = sections.has(curSection) ? curSection : '';
@@ -376,7 +377,7 @@
     if(!grade){ box.hidden = true; return; }
     const active = students.filter(s => String(s.grade||'') === grade && (!section || String(s.section||'') === section) && mpsIsActive(s));
     box.hidden = false;
-    $('classQuickLabel').textContent = 'Class ' + grade + (section ? ' · ' + section : '') + ' — ' + active.length + ' active student' + (active.length===1?'':'s') + ' ready to batch print.';
+    $('classQuickLabel').textContent = mpsClassLabel({grade,section}) + ' — ' + active.length + ' active student' + (active.length===1?'':'s') + ' ready to batch print.';
   }
 
   function renderAll(){
@@ -446,10 +447,15 @@
     $('sNameHi').value = s.nameHi || '';
     $('sContact').value = s.contact || '';
     $('sAddress').value = s.address || '';
-    photoData = s.photo || '';
+    photoData = mpsIsDataImage(s.photo) ? s.photo : '';
+    photoDirty = false;
     renderPhoto();
     if(!photoData && s.hasPhoto){
-      mpsPhotoGet(s.id).then(photo => { if(editingId === s.id && photo){ photoData = photo; renderPhoto(); } });
+      mpsPhotoGet(s.id).then(photo => {
+        // Never let a slow IndexedDB read overwrite a photo the user has
+        // already replaced or removed in this editing session.
+        if(editingId === s.id && !photoDirty && mpsIsDataImage(photo)){ photoData = photo; renderPhoto(); }
+      });
     }
     $('formTitle').textContent = 'Edit student';
     $('editBadge').hidden = false;
@@ -462,6 +468,7 @@
   function resetForm(){
     editingId = null;
     photoData = '';
+    photoDirty = false;
     $('studentForm').reset();
     $('sId').value = '';
     $('sJoined').value = mpsSession();
@@ -480,29 +487,52 @@
       // ~180 px is plenty for a CR80/A4 card. The image is kept in the photo
       // store (IndexedDB), so the student record stays tiny.
       photoData = await mpsCompressImage(String(reader.result || ''), 180, 0.72);
+      photoDirty = true;
       renderPhoto();
     };
     reader.readAsDataURL(file);
   });
-  $('removePhoto').onclick = () => { photoData=''; $('sPhoto').value=''; renderPhoto(); };
+  $('removePhoto').onclick = () => { photoData=''; photoDirty=true; $('sPhoto').value=''; renderPhoto(); };
 
   $('studentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const data = readForm();
-    if(!data.name || !data.grade || !data.adm){ setMsg('Name, admission number and class are required.', false); return; }
-    const clash = students.find(s => s.id !== data.id && String(s.adm||s.roll||'').toLowerCase() === data.adm.toLowerCase());
-    if(clash){ setMsg('Admission no. ' + data.adm + ' is already used by ' + (clash.name||'another student') + '.', false); return; }
-    // The image goes to IndexedDB; only a small flag stays in the record.
-    const stored = await mpsStoreStudentPhoto(data.id, photoData);
-    data.hasPhoto = stored.hasPhoto;
-    data.photo = stored.inline;
-    const idx = students.findIndex(s => s.id === data.id);
-    if(idx >= 0) students[idx] = data; else students.push(data);
-    if(!mpsSaveStudents(students)){ setMsg('Could not save — browser storage is full or blocked.', false); return; }
-    students = mpsStudents();
-    setMsg(idx >= 0 ? 'Student updated everywhere.' : 'Student added.');
-    resetForm();
-    renderAll();
+    const btn = $('saveBtn');
+    if(btn.disabled) return;
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const data = readForm();
+      if(!data.name || !data.grade || !data.adm){ setMsg('Name, admission number and class are required.', false); return; }
+      const clash = students.find(s => s.id !== data.id && String(s.adm||s.roll||'').toLowerCase() === data.adm.toLowerCase());
+      if(clash){ setMsg('Admission no. ' + data.adm + ' is already used by ' + (clash.name||'another student') + '.', false); return; }
+      const idx = students.findIndex(s => s.id === data.id);
+      const existing = idx >= 0 ? students[idx] : null;
+      if(photoDirty){
+        // The image goes to IndexedDB; only a small flag stays in the record.
+        const stored = await mpsStoreStudentPhoto(data.id, photoData);
+        data.hasPhoto = stored.hasPhoto;
+        data.photo = stored.inline;
+      } else if(existing){
+        // The photo was not touched. Keep the existing flag/data even if the
+        // IndexedDB read has not finished yet — otherwise a quick save would
+        // silently delete the student's photo.
+        data.hasPhoto = !!existing.hasPhoto;
+        data.photo = mpsIsDataImage(existing.photo) ? existing.photo : '';
+      } else {
+        data.hasPhoto = false;
+        data.photo = '';
+      }
+      if(idx >= 0) students[idx] = data; else students.push(data);
+      if(!mpsSaveStudents(students)){ setMsg('Could not save — browser storage is full or blocked.', false); return; }
+      students = mpsStudents();
+      setMsg(idx >= 0 ? 'Student updated everywhere.' : 'Student added.');
+      resetForm();
+      renderAll();
+    } finally {
+      btn.disabled = false;
+      if(btn.textContent === 'Saving…') btn.textContent = originalLabel;
+    }
   });
   $('cancelEdit').onclick = resetForm;
 
@@ -557,6 +587,7 @@
   function batchCard(studentsList, mode){
     const list = studentsList.filter(mpsIsActive);
     if(!list.length){ alert('No active students to print. Check the status filter.'); return; }
+    if(list.length > 200 && !confirm('This batch has ' + list.length + ' students. It can create a very large print job. Continue?')) return;
     if(mode === 'id'){
       if(!writeSessionJSON('mps-card-batch', { students: list, sides:['front','back'], at: Date.now() })){
         alert('Could not prepare the batch — browser storage may be blocked.'); return;
@@ -592,7 +623,7 @@
     if(act === 'fees'){ location.href = 'fees.html?student=' + encodeURIComponent(s.id); return; }
     if(act === 'del'){
       if(!confirm('Delete ' + (s.name||'this student') + ' and all linked marks, fees and awards?')) return;
-      mpsDeleteStudentCascade(s.id);
+      if(!mpsDeleteStudentCascade(s.id)){ alert('Could not delete this student — browser storage may be full or blocked.'); return; }
       selected.delete(s.id);
       students = mpsStudents();
       renderAll();
@@ -641,9 +672,10 @@
       if(act === 'status'){ $('statusDlg').showModal(); return; }
       if(act === 'delete'){
         if(!confirm('Delete ' + list.length + ' student(s) and all their marks, fees and awards? This cannot be undone.')) return;
-        list.forEach(s => mpsDeleteStudentCascade(s.id));
+        const n = mpsDeleteStudentsCascade(list.map(s => s.id));
+        if(!n){ alert('Could not delete these students — browser storage may be full or blocked.'); return; }
         selected.clear();
-        afterBulk(list.length + ' student(s) deleted.');
+        afterBulk(n + ' student(s) deleted.');
       }
     });
   });
@@ -657,9 +689,9 @@
     const section = $('assignSection').value.trim();
     const ids = new Set(selected);
     students = students.map(s => ids.has(s.id) ? Object.assign({}, s, { grade, section, updatedAt: Date.now() }) : s);
-    mpsSaveStudents(students);
+    if(!mpsSaveStudents(students)){ alert('Could not save — storage may be full.'); students = mpsStudents(); return; }
     $('assignDlg').close();
-    afterBulk(ids.size + ' student(s) moved to Class ' + grade + (section ? ' · ' + section : '') + '.');
+    afterBulk(ids.size + ' student(s) moved to ' + (grade.toLowerCase() === 'graduated' ? 'Graduated' : 'Class ' + grade + (section ? ' · ' + section : '')) + '.');
   });
 
   $('promoteForm').addEventListener('submit', (e) => {
@@ -674,7 +706,7 @@
       n++;
       return Object.assign({}, s, { grade: next, section: next === 'Graduated' ? '' : s.section, status: next === 'Graduated' ? 'graduated' : s.status, updatedAt: Date.now() });
     });
-    mpsSaveStudents(students);
+    if(!mpsSaveStudents(students)){ alert('Could not save — storage may be full.'); students = mpsStudents(); return; }
     $('promoteDlg').close();
     afterBulk(n + ' student(s) promoted.');
   });
@@ -686,8 +718,8 @@
     const head = $('feeHead').value, due = $('feeDue').value, note = $('feeNote').value.trim();
     const session = mpsSession();
     const fees = mpsFees();
-    selected.forEach(id => fees.push({ id: mpsNewId('fee'), studentId: id, session, head, amount, paid: 0, dueDate: due, note, updatedAt: Date.now() }));
-    mpsSaveFees(fees);
+    selected.forEach(id => fees.push({ id: mpsNewId('fee'), studentId: id, session, kind:'charge', head, amount, paid: 0, dueDate: due, date: new Date().toISOString().slice(0,10), note, updatedAt: Date.now() }));
+    if(!mpsSaveFees(fees)){ alert('Could not save — storage may be full.'); return; }
     $('feeDlg').close();
     $('feeForm').reset();
     afterBulk('Fee charge added to ' + selected.size + ' student(s).');
@@ -698,7 +730,7 @@
     const status = $('setStatus').value;
     const ids = new Set(selected);
     students = students.map(s => ids.has(s.id) ? Object.assign({}, s, { status, updatedAt: Date.now() }) : s);
-    mpsSaveStudents(students);
+    if(!mpsSaveStudents(students)){ alert('Could not save — storage may be full.'); students = mpsStudents(); return; }
     $('statusDlg').close();
     afterBulk(ids.size + ' student(s) set to ' + status + '.');
   });
@@ -726,48 +758,62 @@
         const parsed = JSON.parse(String(reader.result || '{}'));
         const list = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.students) ? parsed.students : null);
         if(!list) throw new Error('No student list found in this file.');
-        const clean = list.filter(s => s && typeof s === 'object' && (s.name || s.adm)).map(s => ({
-          id: s.id || mpsNewId('stu'),
-          name: String(s.name || '').slice(0,60),
-          adm: String(s.adm || s.roll || '').slice(0,24),
-          roll: String(s.roll || '').slice(0,16),
-          grade: String(s.grade || '').slice(0,12),
-          section: String(s.section || '').slice(0,6),
-          gender: String(s.gender || '').slice(0,12),
-          status: ['active','left','graduated'].includes(s.status) ? s.status : 'active',
-          dob: String(s.dob || '').slice(0,30),
-          blood: String(s.blood || '').slice(0,4),
-          valid: String(s.valid || '').slice(0,30),
-          joinedSession: String(s.joinedSession || '').slice(0,16),
-          father: String(s.father || '').slice(0,60),
-          fatherHi: String(s.fatherHi || '').slice(0,60),
-          mother: String(s.mother || '').slice(0,60),
-          nameHi: String(s.nameHi || '').slice(0,60),
-          contact: String(s.contact || '').slice(0,40),
-          address: String(s.address || '').slice(0,240),
-          photo: typeof s.photo === 'string' ? s.photo : '',
-          hasPhoto: !!s.hasPhoto,
-          updatedAt: Number(s.updatedAt) || Date.now()
-        }));
-        if(!clean.length) throw new Error('The file did not contain usable students.');
-        const byKey = new Map(students.map(s => [String(s.adm||s.id).toLowerCase(), s]));
-        clean.forEach(s => {
-          const key = String(s.adm || s.id).toLowerCase();
-          const existing = byKey.get(key);
-          if(existing){ s.id = existing.id; s.hasPhoto = s.hasPhoto || existing.hasPhoto; }
-          byKey.set(key, s);
+        const photos = (!Array.isArray(parsed) && parsed.photos && typeof parsed.photos === 'object') ? parsed.photos : {};
+        const merged = new Map(students.map(s => [s.id, s]));
+        const byId = new Map(students.map(s => [s.id, s]));
+        const byAdm = new Map();
+        students.forEach(s => {
+          const key = String(s.adm || s.roll || '').trim().toLowerCase();
+          if(key) byAdm.set(key, s);
         });
-        for(const s of byKey.values()){
-          if(typeof s.photo === 'string' && s.photo.indexOf('data:image') === 0){
-            const stored = await mpsStoreStudentPhoto(s.id, await mpsCompressImage(s.photo, 180, 0.72));
+        let imported = 0;
+        list.forEach(raw => {
+          if(!raw || typeof raw !== 'object') return;
+          const s = mpsSanitizeStudent(raw);
+          if(!s.name && !s.adm) return;
+          const admKey = String(s.adm || '').trim().toLowerCase();
+          const existing = byId.get(s.id) || (admKey ? byAdm.get(admKey) : null);
+          if(existing){
+            s.id = existing.id;
+            if(mpsIsDataImage(s.photo)){
+              // use the incoming photo
+            } else if(existing.hasPhoto || mpsIsDataImage(existing.photo)){
+              s.hasPhoto = !!existing.hasPhoto;
+              s.photo = mpsIsDataImage(existing.photo) ? existing.photo : '';
+            } else {
+              s.hasPhoto = false;
+              s.photo = '';
+            }
+          }else if(!mpsIsDataImage(s.photo)){
+            // A record exported from the full backup may only have the photo
+            // in the photos map, so check that before deciding there is none.
+            s.photo = mpsIsDataImage(photos[s.id]) ? photos[s.id] : '';
+            if(!s.photo) s.hasPhoto = false;
+          }
+          if(!s.photo && mpsIsDataImage(photos[s.id])) s.photo = photos[s.id];
+          merged.set(s.id, s);
+          byId.set(s.id, s);
+          if(admKey) byAdm.set(admKey, s);
+          imported++;
+        });
+        if(!imported) throw new Error('The file did not contain usable students.');
+        for(const s of merged.values()){
+          if(mpsIsDataImage(s.photo)){
+            const small = await mpsCompressImage(s.photo, 180, 0.72);
+            const stored = await mpsStoreStudentPhoto(s.id, small);
             s.hasPhoto = stored.hasPhoto;
             s.photo = stored.inline;
+          } else if(!s.hasPhoto){
+            s.photo = '';
           }
         }
-        students = mpsSortStudents(Array.from(byKey.values()));
-        mpsSaveStudents(students);
+        students = mpsSortStudents(Array.from(merged.values()));
+        if(!mpsSaveStudents(students)){
+          students = mpsStudents();
+          throw new Error('Browser storage is full or blocked.');
+        }
         renderAll();
-        alert('Imported ' + clean.length + ' student(s). Matching admission numbers were updated.');
+        alert('Imported ' + imported + ' student(s). Matching admission numbers/ids were updated.');
       }catch(err){ alert('Import failed: ' + (err && err.message ? err.message : err)); }
       finally { e.target.value = ''; }
     };

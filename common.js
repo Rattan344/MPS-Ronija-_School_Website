@@ -1,9 +1,9 @@
 // Shared helpers for the admin area (client-side only — see README for the security note).
-// Auth is persisted in localStorage with an expiry so staff don't have to log in every time.
-// If localStorage is unavailable (private mode quirks), we fall back to an in-memory store.
+// Auth persists on this computer until Logout. If localStorage is unavailable
+// (private mode quirks), we fall back to an in-memory store.
 
 const MPS_AUTH_KEY = 'mps-auth';
-const MPS_AUTH_DAYS = 30;
+const MPS_AUTH_VERSION = 2;
 
 const mpsStore = (() => {
   try {
@@ -30,11 +30,13 @@ function mpsAuthRead() {
   try {
     const raw = mpsStore.getItem(MPS_AUTH_KEY);
     if (!raw) return null;
-    // Backward compat: old value was just "1"
-    if (raw === '1') return { exp: Date.now() + MPS_AUTH_DAYS * 24 * 60 * 60 * 1000, legacy: true };
+    // Backward compat: older builds stored just "1" or an expiring v1 token.
+    if (raw === '1') return { v: MPS_AUTH_VERSION, remembered: true };
     const data = JSON.parse(raw);
-    if (!data || typeof data.exp !== 'number') return null;
-    return data;
+    if (!data || typeof data !== 'object') return null;
+    if (data.v === MPS_AUTH_VERSION) return data;
+    if (typeof data.exp === 'number') return data;
+    return null;
   } catch (_) {
     return null;
   }
@@ -43,7 +45,7 @@ function mpsAuthRead() {
 function isAuthed() {
   const data = mpsAuthRead();
   if (!data) return false;
-  if (Date.now() > data.exp) {
+  if (typeof data.exp === 'number' && Date.now() > data.exp) {
     mpsAuthClear();
     return false;
   }
@@ -55,18 +57,22 @@ function requireAuth() {
     location.replace('login.html');
     return false;
   }
-  // If this came from legacy "1", migrate to a proper expiry token.
+  // Upgrade old expiry-based tokens to the current "until Logout" token.
   try {
     const raw = mpsStore.getItem(MPS_AUTH_KEY);
-    if (raw === '1') mpsSetAuth();
+    let needsUpgrade = raw === '1';
+    if (!needsUpgrade && raw) {
+      const data = JSON.parse(raw);
+      needsUpgrade = !data || data.v !== MPS_AUTH_VERSION;
+    }
+    if (needsUpgrade) mpsSetAuth();
   } catch (_) { /* ignore */ }
   return true;
 }
 
-function mpsSetAuth(days = MPS_AUTH_DAYS) {
-  const exp = Date.now() + days * 24 * 60 * 60 * 1000;
+function mpsSetAuth() {
   try {
-    mpsStore.setItem(MPS_AUTH_KEY, JSON.stringify({ v: 1, exp }));
+    mpsStore.setItem(MPS_AUTH_KEY, JSON.stringify({ v: MPS_AUTH_VERSION, at: Date.now() }));
   } catch (error) {
     console.warn('Could not persist login session.', error);
   }
@@ -74,7 +80,7 @@ function mpsSetAuth(days = MPS_AUTH_DAYS) {
 
 function logout() {
   mpsAuthClear();
-  location.href = 'index.html';
+  location.href = 'login.html';
 }
 
 // Read a JSON payload from storage without ever throwing.
@@ -150,6 +156,47 @@ function mpsNewStudentId() {
   return 'stu-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
 }
 
+function mpsIsDataImage(value) {
+  return typeof value === 'string' && /^data:image\/(?:png|jpe?g|webp|gif);base64,/i.test(value);
+}
+
+function mpsCleanText(value, max) {
+  return String(value == null ? '' : value).replace(/\u0000/g, '').trim().slice(0, max || 240);
+}
+
+// Normalise one student record from an import/backup. Unknown extra fields are
+// kept (forward compatibility), but every field the pages render is bounded and
+// the photo is restricted to a real image data URL.
+function mpsSanitizeStudent(raw, fallbackId) {
+  const s = (raw && typeof raw === 'object') ? raw : {};
+  const statusText = String(s.status || '').trim().toLowerCase();
+  const status = statusText.includes('grad') ? 'graduated'
+    : statusText.includes('left') || statusText.includes('tc') ? 'left' : 'active';
+  return Object.assign({}, s, {
+    id: mpsCleanText(s.id || fallbackId, 64) || mpsNewStudentId(),
+    name: mpsCleanText(s.name, 60),
+    adm: mpsCleanText(s.adm || s.roll, 24),
+    roll: mpsCleanText(s.roll, 16),
+    grade: mpsCleanText(s.grade, 12),
+    section: mpsCleanText(s.section, 6),
+    gender: mpsCleanText(s.gender, 12),
+    status,
+    dob: mpsCleanText(s.dob, 30),
+    blood: mpsCleanText(s.blood, 4),
+    valid: mpsCleanText(s.valid, 30),
+    joinedSession: mpsCleanText(s.joinedSession, 16),
+    father: mpsCleanText(s.father, 60),
+    fatherHi: mpsCleanText(s.fatherHi, 60),
+    mother: mpsCleanText(s.mother, 60),
+    nameHi: mpsCleanText(s.nameHi, 60),
+    contact: mpsCleanText(s.contact, 40),
+    address: mpsCleanText(s.address, 240),
+    photo: mpsIsDataImage(s.photo) ? s.photo : '',
+    hasPhoto: !!s.hasPhoto,
+    updatedAt: Number(s.updatedAt) || Date.now()
+  });
+}
+
 function mpsClassKey(student) {
   const g = String((student && student.grade) || '').trim().toLowerCase();
   const s = String((student && student.section) || '').trim().toLowerCase();
@@ -160,16 +207,16 @@ function mpsClassLabel(student) {
   const g = String((student && student.grade) || '').trim();
   const s = String((student && student.section) || '').trim();
   if (!g) return 'Unassigned';
+  if (g.toLowerCase() === 'graduated') return 'Graduated';
   return 'Class ' + g + (s ? ' · ' + s : '');
 }
 
 function mpsSortStudents(list) {
+  // Use the same grade ladder everywhere. Roman numerals (I–XII) must sort
+  // numerically, not alphabetically, and Graduated/unknown classes go last.
   const gradeRank = (g) => {
-    const order = ['nursery', 'lkg', 'ukg', 'kg'];
-    const v = String(g || '').trim().toLowerCase();
-    if (order.includes(v)) return order.indexOf(v);
-    const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
-    return Number.isNaN(n) ? 99 : n;
+    const i = mpsGradeIndex(g);
+    return i < 0 ? 999 : i;
   };
   return list.slice().sort((a, b) => {
     const ga = gradeRank(a.grade), gb = gradeRank(b.grade);
@@ -230,8 +277,14 @@ function mpsConfig() {
     const raw = mpsStore.getItem(MPS_DB.config);
     const parsed = raw ? JSON.parse(raw) : null;
     const cfg = Object.assign({}, fallback, parsed || {});
-    if (!Array.isArray(cfg.sessions) || !cfg.sessions.length) cfg.sessions = [cfg.activeSession || MPS_DEFAULT_SESSION];
-    if (!cfg.activeSession) cfg.activeSession = cfg.sessions[0];
+    cfg.sessions = Array.from(new Set(
+      (Array.isArray(cfg.sessions) ? cfg.sessions : [])
+        .map((s) => String(s || '').trim())
+        .filter(Boolean)
+    ));
+    cfg.activeSession = String(cfg.activeSession || '').trim() || MPS_DEFAULT_SESSION;
+    if (!cfg.sessions.length) cfg.sessions = [cfg.activeSession];
+    if (!cfg.sessions.includes(cfg.activeSession)) cfg.sessions.unshift(cfg.activeSession);
     return cfg;
   } catch (error) {
     return fallback;
@@ -309,7 +362,8 @@ function mpsPercentFromMark(mark) {
   const obtained = Number(mark && mark.obtained);
   const max = Number(mark && mark.max);
   if (!isFinite(obtained) || !(max > 0)) return null;
-  return Math.round((obtained / max) * 1000) / 10;
+  // Legacy records may contain a score above the maximum; never show >100%.
+  return Math.round(Math.min(obtained / max, 1) * 1000) / 10;
 }
 
 function mpsMarksFor(studentId, session) {
@@ -371,13 +425,24 @@ function mpsAwardsFor(studentId, session) {
   return mpsAwards().filter((a) => a.studentId === studentId && (!session || a.session === session));
 }
 
-/* -------- Deleting a student removes their linked records -------- */
+/* -------- Deleting students removes their linked records -------- */
+function mpsDeleteStudentsCascade(ids) {
+  const set = new Set(Array.isArray(ids) ? ids : [ids]);
+  const before = mpsStudents();
+  const removed = before.filter((s) => set.has(s.id));
+  if (!removed.length) return 0;
+  // One write per list, so deleting a whole class is not O(n²). Stop before
+  // touching linked records/photos if the student list itself cannot be saved.
+  if (!mpsSaveStudents(before.filter((s) => !set.has(s.id)))) return 0;
+  mpsSaveMarks(mpsMarks().filter((m) => !set.has(m.studentId)));
+  mpsSaveFees(mpsFees().filter((f) => !set.has(f.studentId)));
+  mpsSaveAwards(mpsAwards().filter((a) => !set.has(a.studentId)));
+  removed.forEach((s) => mpsPhotoDelete(s.id));
+  return removed.length;
+}
+
 function mpsDeleteStudentCascade(id) {
-  mpsSaveStudents(mpsStudents().filter((s) => s.id !== id));
-  mpsSaveMarks(mpsMarks().filter((m) => m.studentId !== id));
-  mpsSaveFees(mpsFees().filter((f) => f.studentId !== id));
-  mpsSaveAwards(mpsAwards().filter((a) => a.studentId !== id));
-  mpsPhotoDelete(id);
+  return mpsDeleteStudentsCascade([id]);
 }
 
 /* -------- Whole-database backup -------- */
@@ -398,41 +463,130 @@ async function mpsExportAllWithPhotos() {
   const payload = mpsExportAll();
   payload.version = 3;
   const photos = {};
-  const list = payload.students.filter((s) => s.hasPhoto || (typeof s.photo === 'string' && s.photo));
+  const list = payload.students.filter((s) => s.hasPhoto || mpsIsDataImage(s.photo));
   await Promise.all(list.map(async (s) => {
-    const photo = s.photo || (await mpsPhotoGet(s.id));
-    if (photo) photos[s.id] = photo;
+    const photo = mpsIsDataImage(s.photo) ? s.photo : (await mpsPhotoGet(s.id));
+    if (mpsIsDataImage(photo)) photos[s.id] = photo;
   }));
   payload.photos = photos;
   return payload;
 }
 
+function mpsSanitizeMark(raw, validIds) {
+  const m = (raw && typeof raw === 'object') ? raw : {};
+  const studentId = mpsCleanText(m.studentId, 64);
+  const obtained = Number(m.obtained);
+  const max = Number(m.max);
+  if (!validIds.has(studentId) || !isFinite(obtained) || obtained < 0 || !(max > 0)) return null;
+  return Object.assign({}, m, {
+    id: mpsCleanText(m.id, 64) || mpsNewId('mk'),
+    studentId,
+    session: mpsCleanText(m.session, 16),
+    exam: mpsCleanText(m.exam, 40),
+    obtained,
+    max,
+    grade: mpsCleanText(m.grade, 12),
+    section: mpsCleanText(m.section, 6),
+    updatedAt: Number(m.updatedAt) || Date.now()
+  });
+}
+
+function mpsSanitizeFee(raw, validIds) {
+  const f = (raw && typeof raw === 'object') ? raw : {};
+  const studentId = mpsCleanText(f.studentId, 64);
+  if (!validIds.has(studentId)) return null;
+  const amount = Number(f.amount) || 0;
+  const paid = Number(f.paid) || 0;
+  if (!(amount > 0) && !(paid > 0)) return null;
+  return Object.assign({}, f, {
+    id: mpsCleanText(f.id, 64) || mpsNewId('fee'),
+    studentId,
+    session: mpsCleanText(f.session, 16),
+    kind: (amount <= 0 && paid > 0) ? 'payment' : 'charge',
+    head: mpsCleanText(f.head, 30) || 'Fee',
+    amount: amount > 0 ? amount : 0,
+    paid: paid > 0 ? paid : 0,
+    dueDate: mpsCleanText(f.dueDate, 30),
+    date: mpsCleanText(f.date, 30),
+    mode: mpsCleanText(f.mode, 20),
+    note: mpsCleanText(f.note, 100),
+    updatedAt: Number(f.updatedAt) || Date.now()
+  });
+}
+
+function mpsSanitizeAward(raw, validIds) {
+  const a = (raw && typeof raw === 'object') ? raw : {};
+  const studentId = mpsCleanText(a.studentId, 64);
+  if (!validIds.has(studentId)) return null;
+  return Object.assign({}, a, {
+    id: mpsCleanText(a.id, 64) || mpsNewId('awd'),
+    studentId,
+    session: mpsCleanText(a.session, 16),
+    kind: a.kind === 'scholarship' ? 'scholarship' : 'award',
+    title: mpsCleanText(a.title, 70) || 'Award',
+    category: mpsCleanText(a.category, 30) || 'Other',
+    amount: Math.max(0, Number(a.amount) || 0),
+    date: mpsCleanText(a.date, 30),
+    note: mpsCleanText(a.note, 100),
+    updatedAt: Number(a.updatedAt) || Date.now()
+  });
+}
+
 async function mpsImportAll(payload) {
   if (!payload || typeof payload !== 'object') throw new Error('Not a valid backup file.');
-  let imported = 0;
-  const photos = (payload.photos && typeof payload.photos === 'object') ? payload.photos : {};
-  // A restore replaces everything, including the photo store.
+  if (!Array.isArray(payload.students)) throw new Error('This backup does not contain a student list.');
+
+  const validIds = new Set();
+  const seenIds = new Set();
+  const list = [];
+  payload.students.forEach((raw) => {
+    if (!raw || typeof raw !== 'object') return;
+    const s = mpsSanitizeStudent(raw);
+    if (!s.name && !s.adm) return;
+    // Never let two imported records share one id: linked marks/fees/awards
+    // would otherwise attach to the wrong child.
+    while (seenIds.has(s.id)) s.id = mpsNewStudentId();
+    seenIds.add(s.id);
+    validIds.add(s.id);
+    list.push(s);
+  });
+  if (!list.length) throw new Error('This backup contains no usable student records.');
+
+  const rawPhotos = (payload.photos && typeof payload.photos === 'object') ? payload.photos : {};
+  const photos = {};
+  Object.keys(rawPhotos).forEach((id) => {
+    if (validIds.has(id) && mpsIsDataImage(rawPhotos[id])) photos[id] = rawPhotos[id];
+  });
+
+  // All validation is done before anything on this computer is replaced.
   await mpsPhotoClear();
-  if (Array.isArray(payload.students)) {
-    const list = payload.students.map((s) => Object.assign({}, s));
-    for (const s of list) {
-      const photo = (typeof s.photo === 'string' && s.photo) ? s.photo : (photos[s.id] || '');
-      s.photo = '';
-      s.hasPhoto = false;
-      if (photo) {
-        const stored = await mpsStoreStudentPhoto(s.id, photo);
-        s.hasPhoto = stored.hasPhoto;
-        s.photo = stored.inline;
-      }
+  for (const s of list) {
+    const photo = photos[s.id] || (mpsIsDataImage(s.photo) ? s.photo : '');
+    s.photo = '';
+    s.hasPhoto = false;
+    if (photo) {
+      const stored = await mpsStoreStudentPhoto(s.id, photo);
+      s.hasPhoto = stored.hasPhoto;
+      s.photo = stored.inline;
     }
-    mpsSaveStudents(list);
-    imported = list.length;
   }
-  if (Array.isArray(payload.marks)) mpsSaveMarks(payload.marks);
-  if (Array.isArray(payload.fees)) mpsSaveFees(payload.fees);
-  if (Array.isArray(payload.awards)) mpsSaveAwards(payload.awards);
-  if (payload.config && typeof payload.config === 'object') mpsSaveConfig(payload.config);
-  return imported;
+  const marks = Array.isArray(payload.marks) ? payload.marks.map((m) => mpsSanitizeMark(m, validIds)).filter(Boolean) : null;
+  const fees = Array.isArray(payload.fees) ? payload.fees.map((f) => mpsSanitizeFee(f, validIds)).filter(Boolean) : null;
+  const awards = Array.isArray(payload.awards) ? payload.awards.map((a) => mpsSanitizeAward(a, validIds)).filter(Boolean) : null;
+  if (!mpsSaveStudents(list)) throw new Error('Could not save student data. Browser storage may be full.');
+  if (marks && !mpsSaveMarks(marks)) throw new Error('Students were restored, but marks could not be saved. Browser storage may be full.');
+  if (fees && !mpsSaveFees(fees)) throw new Error('Students and marks were restored, but fees could not be saved. Browser storage may be full.');
+  if (awards && !mpsSaveAwards(awards)) throw new Error('Students, marks and fees were restored, but awards could not be saved. Browser storage may be full.');
+
+  if (payload.config && typeof payload.config === 'object') {
+    const cfg = Object.assign({}, payload.config);
+    cfg.sessions = Array.from(new Set((Array.isArray(cfg.sessions) ? cfg.sessions : []).map((s) => mpsCleanText(s, 16)).filter(Boolean)));
+    cfg.activeSession = mpsCleanText(cfg.activeSession, 16) || MPS_DEFAULT_SESSION;
+    if (!cfg.sessions.length) cfg.sessions = [cfg.activeSession];
+    if (!cfg.sessions.includes(cfg.activeSession)) cfg.sessions.unshift(cfg.activeSession);
+    if (!mpsSaveConfig(cfg)) throw new Error('School data was restored, but session settings could not be saved. Browser storage may be full.');
+  }
+  return list.length;
 }
 
 /* ---------------------------------------------------------------------------
@@ -546,7 +700,7 @@ function mpsPhotoClear() {
 }
 
 async function mpsStoreStudentPhoto(id, dataUrl) {
-  if (!dataUrl) { await mpsPhotoDelete(id); return { hasPhoto: false, inline: '' }; }
+  if (!mpsIsDataImage(dataUrl)) { await mpsPhotoDelete(id); return { hasPhoto: false, inline: '' }; }
   const ok = await mpsPhotoPut(id, dataUrl);
   return ok ? { hasPhoto: true, inline: '' } : { hasPhoto: false, inline: dataUrl };
 }
@@ -554,8 +708,8 @@ async function mpsStoreStudentPhoto(id, dataUrl) {
 function mpsHydratePhotos(list) {
   return Promise.all((list || []).map((s) => {
     if (!s) return Promise.resolve(s);
-    if (s.photo || !s.hasPhoto) return Promise.resolve(s);
-    return mpsPhotoGet(s.id).then((photo) => Object.assign({}, s, { photo }));
+    if (mpsIsDataImage(s.photo) || !s.hasPhoto) return Promise.resolve(s);
+    return mpsPhotoGet(s.id).then((photo) => Object.assign({}, s, { photo: mpsIsDataImage(photo) ? photo : '' }));
   }));
 }
 
@@ -582,8 +736,8 @@ async function mpsCompressStoredPhotos(max, quality) {
   const students = mpsStudents();
   let before = 0, after = 0, changed = 0, total = 0;
   for (const s of students) {
-    let photo = (typeof s.photo === 'string' && s.photo) ? s.photo : (s.hasPhoto ? await mpsPhotoGet(s.id) : '');
-    if (!photo) continue;
+    let photo = mpsIsDataImage(s.photo) ? s.photo : (s.hasPhoto ? await mpsPhotoGet(s.id) : '');
+    if (!mpsIsDataImage(photo)) continue;
     total++;
     before += photo.length;
     const small = await mpsCompressImage(photo, max || 180, quality || 0.72);
@@ -653,11 +807,12 @@ function mpsPhotoInitials(name) {
 
 function mpsAvatar(student) {
   if (!student) return '<div class="avatar">?</div>';
-  const photo = typeof student.photo === 'string' ? student.photo : '';
-  if (photo) return '<div class="avatar"><img src="' + photo.replace(/"/g, '&quot;') + '" alt=""></div>';
+  const photo = mpsIsDataImage(student.photo) ? student.photo : '';
+  const attr = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  if (photo) return '<div class="avatar"><img src="' + attr(photo) + '" alt=""></div>';
   const initial = mpsPhotoInitials(student.name);
   if (student.hasPhoto && student.id) {
-    return '<div class="avatar" data-photo="' + String(student.id).replace(/"/g, '&quot;') + '">' + initial + '</div>';
+    return '<div class="avatar" data-photo="' + attr(student.id) + '">' + initial + '</div>';
   }
   return '<div class="avatar">' + initial + '</div>';
 }

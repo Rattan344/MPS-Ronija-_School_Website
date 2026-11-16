@@ -63,7 +63,7 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 </div>
 <label>Exam name / परीक्षा का नाम</label><select id="exam"><option value="Annual Examination|वार्षिक परीक्षा">Annual Examination — वार्षिक परीक्षा</option><option value="Half-Yearly Examination|अर्धवार्षिक परीक्षा">Half-Yearly — अर्धवार्षिक परीक्षा</option><option value="Mid-Term Examination|मध्यावधि परीक्षा">Mid-Term — मध्यावधि परीक्षा</option><option value="Unit Test|इकाई परीक्षा">Unit Test — इकाई परीक्षा</option><option value="Pre-Board Examination|प्री-बोर्ड परीक्षा">Pre-Board — प्री-बोर्ड परीक्षा</option><option value="custom">Custom…</option></select>
 <div id="cbox" hidden><label>Custom name (English)</label><input id="cen"><label>Custom name (हिन्दी)</label><input id="chi" placeholder="जैसे: तिमाही परीक्षा"></div>
-<label>Session / सत्र</label><input id="sess" value="2026–27">
+<label>Session / सत्र</label><input id="sess">
 <label>Student name</label><input id="name"><label>Class &amp; section</label><input id="cls"><label>Roll no.</label><input id="roll"><label>Father's name</label><input id="father"><label>छात्र का नाम (Hindi, optional)</label><input id="nameh" placeholder="देवनागरी में नाम"><label>पिता का नाम (Hindi, optional)</label><input id="fatherh">
 <label>Photo option</label>
 <div class="seg"><label><input type="radio" name="pm" value="upload" checked><span>Upload photo</span></label><label><input type="radio" name="pm" value="affix"><span>Affix photo</span></label></div>
@@ -98,6 +98,9 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 <datalist id="subj"><option value="Hindi / हिंदी"><option value="English / अंग्रेज़ी"><option value="Mathematics / गणित"><option value="Science / विज्ञान"><option value="Social Science / सामाजिक विज्ञान"><option value="Sanskrit / संस्कृत"><option value="Computer / कंप्यूटर"><option value="General Knowledge / सामान्य ज्ञान"><option value="Physics / भौतिकी"><option value="Chemistry / रसायन विज्ञान"><option value="Biology / जीव विज्ञान"><option value="EVS / पर्यावरण अध्ययन"></datalist>
 <script>
 const $=id=>document.getElementById(id),SECRET='mps-ronija-change-me-2026'; // keep identical in verify.html
+// Default the session to the one selected in Sessions, rather than a year
+// hard-coded in this file.
+$('sess').value=(typeof mpsSession==='function'?mpsSession():'2026–27');
 const h=s=>{let a=0xdeadbeef,b=0x41c6ce57;for(let i=0;i<s.length;i++){const c=s.charCodeAt(i);a=Math.imul(a^c,2654435761);b=Math.imul(b^c,1597334677)}
 a=Math.imul(a^(a>>>16),2246822507)^Math.imul(b^(b>>>13),3266489909);b=Math.imul(b^(b>>>16),2246822507)^Math.imul(a^(a>>>13),3266489909);
 return ((b>>>0).toString(16).padStart(8,'0')+(a>>>0).toString(16).padStart(8,'0')).toUpperCase()};
@@ -115,40 +118,75 @@ const p=btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/\+/g,'-')
 const sig=h(p+SECRET),url=new URL('verify.html',location.href);url.searchParams.set('d',p);url.searchParams.set('s',sig);
 $('testlink').href=url.href;$('urltxt').textContent='QR opens: '+url.href;$('add').disabled=$('rows').children.length>=12;$('add').textContent=$('rows').children.length>=12?'Maximum 12 rows':'+ Add row';
 // The QR library comes from a CDN. If it is blocked the page must still work,
-// so never let a missing QRCode kill the rest of the script.
+// so never let a missing QRCode kill the rest of the script. Convert the
+// generated QR to a plain <img>: canvas bitmaps are not copied by cloneNode(),
+// which would otherwise leave blank QR codes in batch prints.
 $('qr').innerHTML='';
-if(window.QRCode){new QRCode($('qr'),{text:url.href,width:80,height:80,correctLevel:QRCode.CorrectLevel.L});$('qr').hidden=false;$('qrwarn').hidden=true}
-else{$('qr').hidden=true;$('qrwarn').hidden=false;$('qrerr').hidden=false}
+if(window.QRCode){
+  try{
+    const tmp=document.createElement('div');
+    new QRCode(tmp,{text:url.href,width:80,height:80,correctLevel:QRCode.CorrectLevel.L});
+    const canvas=tmp.querySelector('canvas'), img=tmp.querySelector('img');
+    const src=(canvas&&canvas.toDataURL)?canvas.toDataURL('image/png'):(img&&img.getAttribute('src'));
+    if(src){
+      const out=document.createElement('img');
+      out.src=src;out.width=80;out.height=80;out.alt='Admit card verification QR code';
+      $('qr').appendChild(out);
+      $('qr').hidden=false;$('qrwarn').hidden=true;$('qrerr').hidden=true;
+    }else{throw new Error('No QR image generated')}
+  }catch(err){
+    $('qr').hidden=true;$('qrwarn').hidden=false;$('qrerr').hidden=false;
+  }
+}else{$('qr').hidden=true;$('qrwarn').hidden=false;$('qrerr').hidden=false}
 fit()}
 // Auto-shrink timetable/instructions spacing so everything stays on ONE A4 page (up to 12 exams)
 function fit(){const sh=$('sheet'),fr=sh.firstElementChild;let k=1;sh.style.setProperty('--k',k);
 while(fr.scrollHeight>fr.clientHeight+1&&k>0.5){k=Math.round((k-0.04)*100)/100;sh.style.setProperty('--k',k)}}
 window.addEventListener('beforeprint',fit);
 ['name','cls','roll','father','nameh','fatherh','sess','cen','chi'].forEach(i=>$(i).oninput=up);$('exam').onchange=up;$('add').onclick=()=>{row();up()};$('newser').onclick=newSerial;
-let photoURL='',currentPhoto='';
+let uploadPhoto='',currentPhoto='';
 function photoMode(){const up_=document.querySelector('[name=pm]:checked').value==='upload';$('upbox').hidden=!up_;
-const f=$('photo').files[0],ph=$('ph');
-if(up_&&f){ph.replaceChildren();const i=new Image();
-// Release the previous blob so a long session of students cannot pile up memory.
-if(photoURL){URL.revokeObjectURL(photoURL);photoURL=''}
-photoURL=URL.createObjectURL(f);i.src=photoURL;ph.appendChild(i)}
-else if(up_&&currentPhoto){ph.replaceChildren();const i=new Image();i.src=currentPhoto;i.alt='Student photo';ph.appendChild(i)}
+const ph=$('ph'),src=up_?(uploadPhoto||currentPhoto):'';
+if(src){ph.replaceChildren();const i=new Image();i.src=src;i.alt='Student photo';ph.appendChild(i)}
 else ph.innerHTML='Affix recent<br>passport-size<br>photograph'}
-document.querySelectorAll('[name=pm]').forEach(r=>r.onchange=photoMode);$('photo').onchange=photoMode;
+document.querySelectorAll('[name=pm]').forEach(r=>r.onchange=photoMode);
+$('photo').onchange=e=>{
+  const f=e.target.files&&e.target.files[0];
+  if(!f){uploadPhoto='';photoMode();return}
+  const r=new FileReader();
+  r.onload=async()=>{
+    const small=await mpsCompressImage(String(r.result||''),300,0.8);
+    if($('photo').files[0]!==f)return;
+    uploadPhoto=mpsIsDataImage(small)?small:'';
+    photoMode();
+  };
+  r.readAsDataURL(f);
+};
 for(let i=0;i<4;i++)row();newSerial();
-$('doPrint').addEventListener('click',()=>window.print());
+async function waitImages(root){
+  const imgs=Array.from(root.querySelectorAll('img'));
+  await Promise.all(imgs.map(img=>{
+    if(img.complete&&img.naturalWidth)return Promise.resolve();
+    if(img.decode)return img.decode().catch(()=>{});
+    return new Promise(res=>{img.onload=img.onerror=res});
+  }));
+  if(document.fonts&&document.fonts.ready){try{await document.fonts.ready}catch(_){}}
+}
+$('doPrint').addEventListener('click',async()=>{await waitImages($('sheet'));fit();window.print()});
 
 /* ---- student database hand-off ---- */
 let batchStudents=null;
 function applyStudent(s){
   $('name').value=s.name||'';
-  $('cls').value=(s.grade?('Class '+s.grade):'')+(s.section?(' · '+s.section):'');
+  const cls = s.grade ? (String(s.grade).toLowerCase()==='graduated' ? 'Graduated' : 'Class '+s.grade) : '';
+  $('cls').value=cls+(s.section?(' · '+s.section):'');
   $('roll').value=s.roll||s.adm||'';
   $('father').value=s.father||'';
   $('nameh').value=s.nameHi||'';
   $('fatherh').value=s.fatherHi||'';
   $('photo').value='';
-  currentPhoto=(typeof s.photo==='string')?s.photo:'';
+  uploadPhoto='';
+  currentPhoto=mpsIsDataImage(s.photo)?s.photo:'';
   photoMode();
 }
 (async function(){
@@ -174,11 +212,12 @@ function applyStudent(s){
 
 /* ---- load a class directly from the database (no page change needed) ---- */
 (function(){
-  const classes=mpsClassListFrom(mpsStudents());
+  const all=mpsStudents();
+  const classes=mpsClassListFrom(all);
   const sel=$('dbClass');
   if(!classes.length){sel.innerHTML='<option value="">No students saved yet</option>';return}
   sel.innerHTML=classes.map(c=>{
-    const n=mpsStudents().filter(s=>String(s.grade||'')===c.grade&&String(s.section||'')===c.section&&mpsIsActive(s)).length;
+    const n=all.filter(s=>String(s.grade||'')===c.grade&&String(s.section||'')===c.section&&mpsIsActive(s)).length;
     return '<option value="'+c.grade+'|'+c.section+'">'+c.label+' — '+n+' active</option>';
   }).join('');
   $('loadClass').onclick=async()=>{
@@ -195,8 +234,9 @@ function applyStudent(s){
   };
 })();
 $('batchClear').onclick=()=>{ removeStoredJSON('mps-admit-batch'); batchStudents=null; $('batchBox').hidden=true; };
-$('printAll').addEventListener('click',()=>{
+$('printAll').addEventListener('click',async()=>{
   if(!batchStudents||!batchStudents.length) return;
+  if(batchStudents.length > 200 && !confirm('This batch has ' + batchStudents.length + ' students and will create a very large print job. Continue?')) return;
   const saved={name:$('name').value,cls:$('cls').value,roll:$('roll').value,father:$('father').value,
     nameh:$('nameh').value,fatherh:$('fatherh').value,photo:currentPhoto,serial:$('serial').value};
   const holder=$('batchSheets');
@@ -212,10 +252,13 @@ $('printAll').addEventListener('click',()=>{
   // Restore the on-screen preview to the first student.
   $('name').value=saved.name; $('cls').value=saved.cls; $('roll').value=saved.roll;
   $('father').value=saved.father; $('nameh').value=saved.nameh; $('fatherh').value=saved.fatherh;
-  currentPhoto=saved.photo; $('photo').value=''; photoMode();
+  uploadPhoto=''; currentPhoto=saved.photo; $('photo').value=''; photoMode();
   $('serial').value=saved.serial; up();
   document.body.classList.add('batchprint');
   document.documentElement.classList.add('batchprint');
+  // Wait for photos and QR images to decode before opening the print dialog,
+  // otherwise Chrome can print blank photo/QR boxes on a cold first page.
+  await waitImages(holder);
   window.print();
 });
 window.addEventListener('afterprint',()=>{

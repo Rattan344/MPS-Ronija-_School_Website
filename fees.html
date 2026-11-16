@@ -264,7 +264,7 @@
     const classes = mpsClassListFrom(students);
     const grades = Array.from(new Set(classes.map(c => c.grade)));
     const cur = $('fClass').value;
-    $('fClass').innerHTML = '<option value="">All classes</option>' + grades.map(g => '<option value="' + esc(g) + '">Class ' + esc(g) + '</option>').join('');
+    $('fClass').innerHTML = '<option value="">All classes</option>' + grades.map(g => '<option value="' + esc(g) + '">' + esc(g.toLowerCase()==='graduated'?'Graduated':'Class ' + g) + '</option>').join('');
     if(grades.includes(cur)) $('fClass').value = cur;
     const opts = classes.map(c => '<option value="' + esc(c.grade) + '|' + esc(c.section) + '">' + esc(c.label) + ' — ' + c.count + '</option>').join('');
     $('ccClass').innerHTML = opts;

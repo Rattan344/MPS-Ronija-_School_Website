@@ -164,6 +164,15 @@ let port=null, writer=null, hwConnected=false;
 function setHwStatus(msg, cls){
   const el=$('hwStatus'); el.textContent=msg; el.className='status'+(cls?(' '+cls):'');
 }
+async function dropHw(msg, cls){
+  hwConnected=false;
+  try{ if(writer){ writer.releaseLock(); writer=null; } }catch(_){}
+  try{ if(port){ await port.close(); port=null; } }catch(_){}
+  $('hwConnect').style.display='inline-block';
+  $('hwDisconnect').style.display='none';
+  $('hwTest').style.display='none';
+  setHwStatus(msg||'Disconnected.', cls||'');
+}
 const serialSupported=('serial' in navigator);
 if(!serialSupported){
   $('hwConnect').disabled=true;
@@ -181,31 +190,31 @@ $('hwConnect').onclick=async()=>{
     $('hwTest').style.display='inline-block';
     setHwStatus('Connected. Ready to send RING on each bell.','ok');
   }catch(err){
+    if(port){ try{ await port.close(); }catch(_){} port=null; writer=null; }
+    hwConnected=false;
     setHwStatus('Could not connect: '+(err&&err.message?err.message:err),'err');
   }
 };
-$('hwDisconnect').onclick=async()=>{
-  try{ if(writer){writer.releaseLock();writer=null;} if(port){await port.close();port=null;} }catch(err){console.warn(err)}
-  hwConnected=false;
-  $('hwConnect').style.display='inline-block';
-  $('hwDisconnect').style.display='none';
-  $('hwTest').style.display='none';
-  setHwStatus('Disconnected.','');
-};
+$('hwDisconnect').onclick=()=>dropHw('Disconnected.','');
+if(serialSupported && navigator.serial.addEventListener){
+  navigator.serial.addEventListener('disconnect', e => {
+    if(port && e.target === port) dropHw('The bell device was disconnected.','err');
+  });
+}
 async function hwPulse(){
   if(!hwConnected||!writer)return false;
   try{
     await writer.write(new TextEncoder().encode('RING\n'));
     return true;
   }catch(err){
-    setHwStatus('Send failed: '+(err&&err.message?err.message:err),'err');
-    hwConnected=false;
+    await dropHw('Send failed: '+(err&&err.message?err.message:err)+'. Reconnect the device.','err');
     return false;
   }
 }
 $('hwTest').onclick=async()=>{
+  if(!hwConnected){ setHwStatus('Not connected.',''); return; }
   const ok=await hwPulse();
-  setHwStatus(ok?'Test pulse sent (RING).':'Not connected.');
+  if(ok) setHwStatus('Test pulse sent (RING).','ok');
 };
 
 /* ---------------- Ring ---------------- */

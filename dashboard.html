@@ -63,23 +63,29 @@
     due += Math.max(0, o.billed - o.paid);
   });
 
-  const best = new Map();
+  // Use each student's latest mark, matching the Students and Marks pages.
+  // (The Awards page intentionally uses the best-ever score for honours.)
+  const activeIds = new Set(active.map(s => s.id));
+  const latest = new Map();
   mpsMarks().forEach(m => {
-    if(m.session !== session) return;
+    if(m.session !== session || !activeIds.has(m.studentId)) return;
     const pct = mpsPercentFromMark(m);
     if(pct == null) return;
-    if(!best.has(m.studentId) || pct > best.get(m.studentId)) best.set(m.studentId, pct);
+    const prev = latest.get(m.studentId);
+    if(!prev || (Number(m.updatedAt)||0) >= (Number(prev.updatedAt)||0)){
+      latest.set(m.studentId, { pct, updatedAt: Number(m.updatedAt)||0 });
+    }
   });
   let sum = 0;
-  best.forEach(p => sum += p);
-  const avg = best.size ? Math.round(sum/best.size*10)/10 : null;
+  latest.forEach(o => sum += o.pct);
+  const avg = latest.size ? Math.round(sum/latest.size*10)/10 : null;
   const awards = mpsAwards().filter(a => a.session === session).length;
 
   function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + n + '</div><div class="l">' + label + '</div><div class="s">' + sub + '</div></div>'; }
   $('kpis').innerHTML = [
     kpi(active.length, 'Active students', students.length + ' total records', 'info'),
     kpi(mpsCurrency(due), 'Fee outstanding', mpsCurrency(paid) + ' collected', due > 0 ? 'bad' : 'good'),
-    kpi(avg == null ? '—' : avg + '%', 'Average score', best.size + ' students scored', 'gold'),
+    kpi(avg == null ? '—' : avg + '%', 'Average score', latest.size + ' students scored', 'gold'),
     kpi(awards, 'Awards this session', 'awards + scholarships')
   ].join('');
 })();

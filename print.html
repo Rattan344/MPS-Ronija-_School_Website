@@ -176,6 +176,7 @@
     <div class="print-grid" id="printGrid"></div>
   </div>
   <script src="common.js"></script>
+  <script>requireAuth()</script>
   <script>
   (async function(){
     const d = readSessionJSON('mps-card-data', null);
@@ -205,14 +206,20 @@
     const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const pick = (sd, k, fb) => { const v = sd[k]; return (typeof v === 'string' && v.trim()) ? v.trim() : (fb === undefined ? '—' : fb); };
 
-    const SESSION_START = 2026;
-    const DEFAULT_SESSION = 'SESSION ' + SESSION_START + '–' + String(SESSION_START + 1).slice(2);
+    const activeSession = (typeof mpsSession === 'function' ? mpsSession() : '2026–27');
+    const sessionYear = String(activeSession).match(/\d{4}/);
+    const SESSION_START = sessionYear ? parseInt(sessionYear[0], 10) : new Date().getFullYear();
+    const DEFAULT_SESSION = 'SESSION ' + activeSession;
     const DEFAULT_TERMS = 'Carrying this ID card on school premises is compulsory.\n' +
       'This card is non-transferable and valid for the printed session.\n' +
       'Report loss immediately to the school office.\n' +
       'If found, please return to the school address above.';
 
     function toCardData(student){
+      const card = mpsStudentToCard(student);
+      // An empty field should fall back to the printed default (especially the
+      // validity date); Object.assign would otherwise replace it with ''.
+      Object.keys(card).forEach(k => { if(card[k] === '') delete card[k]; });
       return Object.assign({
         schoolName: 'Mamta Public School',
         schoolTag: 'Ronija, Greater Noida (U.P.)',
@@ -221,7 +228,7 @@
         layout: 'vertical',
         sessionLabel: DEFAULT_SESSION,
         valid: '31 March ' + (SESSION_START + 1)
-      }, mpsStudentToCard(student));
+      }, card);
     }
 
     const cards = isBatch ? (await mpsHydratePhotos(batchStudents)).map(toCardData) : [d];
@@ -237,7 +244,10 @@
     function buildFront(sd){
       const blood = sd.blood || '—';
       const layoutCls = sd.layout === 'horizontal' ? '' : 'vert';
-      const photo = (sd.photo && typeof sd.photo === 'string') ? sd.photo : '';
+      const photo = mpsIsDataImage(sd.photo) ? sd.photo : '';
+      const classLine = String(sd.grade||'').toLowerCase() === 'graduated'
+        ? 'Graduated'
+        : ('Class ' + esc(pick(sd,'grade')) + (sd.section ? ' · ' + esc(pick(sd,'section')) : ''));
       return `
       <div class="idc ${layoutCls}" aria-label="ID card front">
         <div class="idc-front">
@@ -249,7 +259,7 @@
             <div class="idc-session">${esc(pick(sd,'sessionLabel',DEFAULT_SESSION))}</div>
           </div>
           <div class="idc-photo"><div class="idc-frame">${photo ? `<img src="${esc(photo)}" alt="Photo">` : '<span class="phph">👤</span>'}<span class="idc-blood">${esc(blood)}</span></div></div>
-          <div class="idc-identity"><div class="idc-name">${esc(pick(sd,'name','Student Name'))}</div><div class="idc-class">Class ${esc(pick(sd,'grade'))} · ${esc(pick(sd,'section'))}</div></div>
+          <div class="idc-identity"><div class="idc-name">${esc(pick(sd,'name','Student Name'))}</div><div class="idc-class">${classLine}</div></div>
           <div class="idc-grid">
             <div class="idc-row"><span class="idc-lbl">Admission / Roll</span><span class="idc-val">${esc(pick(sd,'roll'))}</span></div>
             <div class="idc-row"><span class="idc-lbl">Date of Birth</span><span class="idc-val">${esc(pick(sd,'dob'))}</span></div>
@@ -281,7 +291,7 @@
             <div class="idc-box"><h4>Terms &amp; conditions</h4><ol class="idc-terms">${termsHtml}</ol></div>
           </div>
           <div class="idc-bfoot"><div style="min-width:0;flex:1"><div class="nm">${esc(pick(sd,'schoolName','Mamta Public School'))}</div><div class="ad">${esc(pick(sd,'schoolAddr','Ronija, Greater Noida, Uttar Pradesh, India'))}</div></div>
-            <div class="idc-qr" aria-hidden="true"><svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><path d="M2 2h10v10H2V2zm2 2v6h6V4H4zm2 2h2v2H6V6zm18-4h10v10H24V2zm2 2v6h6V4h-6zm2 2h2v2h-2V6zM2 24h10v10H2V24zm2 2v6h6v-6H4zm2 2h2v2H6v-2zm10-24h2v4h-2V4zm4 2h2v4h-2V6zm-4 6h4v2h-4v-2zm-2 4h2v4h-2v-4zm4 2h4v2h-4v-2zm6-2h2v4h-2v-4zm4 0h4v2h-4v-2zm-14 6h4v2h-4v-2zm6 2h2v4h-2v-4zm4 0h4v2h-4v-2zm-10 4h4v4h-4v-4zm6 2h2v4h-2v-4zm4 0h6v2h-6v-2zm2 4h4v2h-4v-2z"/></svg></div>
+            <div class="idc-qr" aria-hidden="true"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="18" fill="#172554"/><circle cx="20" cy="20" r="14.5" fill="none" stroke="#dcae2e" stroke-width="0.8"/><text x="20" y="27" font-family="Georgia,serif" font-size="19" font-weight="700" text-anchor="middle" fill="#dcae2e">M</text></svg></div>
           </div>
         </div>
       </div>`;
@@ -324,7 +334,19 @@
     }
 
     render();
-    document.getElementById('doPrint').addEventListener('click', () => window.print());
+    async function waitImages(root){
+      const imgs = Array.from(root.querySelectorAll('img'));
+      await Promise.all(imgs.map(img => {
+        if(img.complete && img.naturalWidth) return Promise.resolve();
+        if(img.decode) return img.decode().catch(()=>{});
+        return new Promise(res => { img.onload = img.onerror = res; });
+      }));
+      if(document.fonts && document.fonts.ready){ try{ await document.fonts.ready; }catch(_){} }
+    }
+    document.getElementById('doPrint').addEventListener('click', async () => {
+      await waitImages(document);
+      window.print();
+    });
 
     /* ---- export (single card only) ---- */
     async function exportNodePng(node, filename){
@@ -352,14 +374,20 @@
       if(!f && !b){ alert('No cards to export.'); return; }
       try{
         const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85.6, 54] });
+        // Match the chosen card layout instead of always making landscape
+        // pages (a vertical card used to be squeezed into 85.6 × 54 mm).
+        const vertical = !(cards[0] && cards[0].layout === 'horizontal');
+        const pw = vertical ? 53.98 : 85.6;
+        const ph = vertical ? 85.6 : 53.98;
+        const orient = vertical ? 'portrait' : 'landscape';
+        const pdf = new jsPDF({ orientation: orient, unit: 'mm', format: [pw, ph] });
         let first = true;
         for(const el of [f,b].filter(Boolean)){
           const canvas = await html2canvas(el, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
           const img = canvas.toDataURL('image/png');
-          if(!first) pdf.addPage([85.6,54], 'landscape');
+          if(!first) pdf.addPage([pw, ph], orient);
           first = false;
-          pdf.addImage(img, 'PNG', 0, 0, 85.6, 54);
+          pdf.addImage(img, 'PNG', 0, 0, pw, ph);
         }
         pdf.save('id-card-front-back.pdf');
       }catch(e){ alert('Export failed: '+(e&&e.message?e.message:e)); }

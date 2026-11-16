@@ -252,7 +252,7 @@ If found, please return to the school address above.</textarea>
             </div>
             <div class="idc-bfoot">
               <div style="min-width:0;flex:1"><div class="nm" id="pvSchoolFoot">Mamta Public School</div><div class="ad" id="pvSchoolAddr">—</div></div>
-              <div class="idc-qr" aria-hidden="true"><svg viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><path d="M2 2h10v10H2V2zm2 2v6h6V4H4zm2 2h2v2H6V6zm18-4h10v10H24V2zm2 2v6h6V4h-6zm2 2h2v2h-2V6zM2 24h10v10H2V24zm2 2v6h6v-6H4zm2 2h2v2H6v-2zm10-24h2v4h-2V4zm4 2h2v4h-2V6zm-4 6h4v2h-4v-2zm-2 4h2v4h-2v-4zm4 2h4v2h-4v-2zm6-2h2v4h-2v-4zm4 0h4v2h-4v-2zm-14 6h4v2h-4v-2zm6 2h2v4h-2v-4zm4 0h4v2h-4v-2zm-10 4h4v4h-4v-4zm6 2h2v4h-2v-4zm4 0h6v2h-6v-2zm2 4h4v2h-4v-2z"/></svg></div>
+              <div class="idc-qr" aria-hidden="true"><svg viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle cx="20" cy="20" r="18" fill="#172554"/><circle cx="20" cy="20" r="14.5" fill="none" stroke="#dcae2e" stroke-width="0.8"/><text x="20" y="27" font-family="Georgia,serif" font-size="19" font-weight="700" text-anchor="middle" fill="#dcae2e">M</text></svg></div>
             </div>
           </div>
         </div>
@@ -269,8 +269,11 @@ If found, please return to the school address above.</textarea>
   (function(){
     const $ = id => document.getElementById(id);
     let photoData = '';
-    const SESSION_START = 2026;
-    const SESSION = 'SESSION ' + SESSION_START + '–' + String(SESSION_START + 1).slice(2);
+    // Follow the active session configured in Sessions → Start next session.
+    const activeSession = (typeof mpsSession === 'function' ? mpsSession() : '2026–27');
+    const yearMatch = String(activeSession).match(/\d{4}/);
+    const SESSION_START = yearMatch ? parseInt(yearMatch[0], 10) : new Date().getFullYear();
+    const SESSION = 'SESSION ' + activeSession;
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
     // Tabs
@@ -313,7 +316,7 @@ If found, please return to the school address above.</textarea>
       $('pvTag').textContent = d.schoolTag || ' ';
       $('pvSession').textContent = d.sessionLabel;
       $('pvName').textContent = d.name || 'Student Name';
-      $('pvClass').textContent = 'Class ' + (d.grade || '—') + ' · ' + (d.section || '—');
+      $('pvClass').textContent = (String(d.grade||'').toLowerCase() === 'graduated') ? 'Graduated' : ('Class ' + (d.grade || '—') + ' · ' + (d.section || '—'));
       $('pvRoll').textContent = d.roll || '—';
       $('pvDob').textContent = d.dob || '—';
       $('pvValid').textContent = d.valid || '—';
@@ -344,7 +347,15 @@ If found, please return to the school address above.</textarea>
       const f = e.target.files && e.target.files[0];
       if(!f){ photoData=''; renderPreview(); return; }
       const r = new FileReader();
-      r.onload = () => { photoData = r.result; renderPreview(); };
+      r.onload = async () => {
+        // A card photo only needs about 300 px. Compressing here keeps the
+        // print tab light, even for a whole class batch.
+        const small = await mpsCompressImage(String(r.result || ''), 300, 0.8);
+        // Ignore a slow read if the user has already chosen another file.
+        if($('photo').files[0] !== f) return;
+        photoData = mpsIsDataImage(small) ? small : '';
+        renderPreview();
+      };
       r.readAsDataURL(f);
     });
 
@@ -353,6 +364,10 @@ If found, please return to the school address above.</textarea>
 
     function saveAndGo(sides){
       const d = readForm();
+      const missing = [];
+      if(!d.name) missing.push('student name');
+      if(!d.grade) missing.push('class');
+      if(missing.length && !confirm('The ' + missing.join(' and ') + ' is empty. Print a blank template anyway?')) return;
       if(!writeSessionJSON('mps-card-data', d)){ alert('Could not save card details. Your browser may be blocking storage.'); return; }
       writeSessionJSON('mps-card-print', { sides: sides, at: Date.now() });
       // A single-card flow must win over any stale class batch.
@@ -379,7 +394,7 @@ If found, please return to the school address above.</textarea>
       $('mother').value = s.mother || '';
       $('contact').value = s.contact || '';
       $('address').value = s.address || '';
-      photoData = typeof s.photo === 'string' ? s.photo : '';
+      photoData = mpsIsDataImage(s.photo) ? await mpsCompressImage(s.photo, 300, 0.8) : '';
       renderPreview();
       removeStoredJSON('mps-card-prefill');
     }

@@ -212,7 +212,7 @@
   $('saveActive').onclick = () => {
     const config = mpsConfig();
     config.activeSession = $('activeSel').value;
-    mpsSaveConfig(config);
+    if(!mpsSaveConfig(config)){ $('sessionMsg').textContent = 'Could not save the active session — storage may be full.'; return; }
     $('sessionMsg').textContent = 'Active session set to ' + config.activeSession + '.';
     refresh();
   };
@@ -222,7 +222,7 @@
     const config = mpsConfig();
     if(config.sessions.includes(label)){ $('sessionMsg').textContent = 'That session already exists.'; return; }
     config.sessions.push(label);
-    mpsSaveConfig(config);
+    if(!mpsSaveConfig(config)){ $('sessionMsg').textContent = 'Could not add the session — storage may be full.'; return; }
     $('newSession').value = '';
     $('sessionMsg').textContent = 'Session ' + label + ' added. Set it active when you are ready.';
     refresh();
@@ -233,13 +233,14 @@
     if(!b) return;
     const config = mpsConfig();
     config.activeSession = b.dataset.activate;
-    mpsSaveConfig(config);
+    if(!mpsSaveConfig(config)){ $('sessionMsg').textContent = 'Could not change the active session — storage may be full.'; return; }
     refresh();
   });
 
   $('startNext').onclick = () => {
     const config = mpsConfig();
     const label = $('nextLabel').value.trim() || mpsNextSessionLabel(config.activeSession);
+    if(config.lastPromotion === label && !confirm('Students were already promoted to ' + label + ' on this computer.\n\nPromote them again? They will move up one more class. Choose Cancel unless you are deliberately correcting the last promotion.')) return;
     if(config.sessions.includes(label)){
       if(!confirm('Session ' + label + ' already exists. Continue and promote students anyway?')) return;
     }
@@ -262,7 +263,8 @@
     if(!mpsSaveStudents(promoted)){ alert('Could not save students — storage may be full.'); return; }
     if(!config.sessions.includes(label)) config.sessions.push(label);
     config.activeSession = label;
-    mpsSaveConfig(config);
+    config.lastPromotion = label;
+    if(!mpsSaveConfig(config)){ alert('Students were promoted, but the session setting could not be saved. Set the active session again.'); refresh(); return; }
     refresh();
     alert('Session ' + label + ' started. ' + activeCount + ' student(s) promoted.');
   };
@@ -283,7 +285,7 @@
       status: target === 'Graduated' ? 'graduated' : s.status,
       updatedAt: Date.now()
     }) : s);
-    mpsSaveStudents(updated);
+    if(!mpsSaveStudents(updated)){ alert('Could not save — storage may be full.'); return; }
     $('promoteMsg').textContent = list.length + ' student(s) promoted to ' + target + '.';
     refresh();
   });
@@ -333,9 +335,14 @@
     const students = mpsStudents();
     const ids = new Set(students.map(s => s.id));
     const before = mpsMarks().length + mpsFees().length + mpsAwards().length;
-    mpsSaveMarks(mpsMarks().filter(m => ids.has(m.studentId)));
-    mpsSaveFees(mpsFees().filter(f => ids.has(f.studentId)));
-    mpsSaveAwards(mpsAwards().filter(a => ids.has(a.studentId)));
+    const okMarks = mpsSaveMarks(mpsMarks().filter(m => ids.has(m.studentId)));
+    const okFees = mpsSaveFees(mpsFees().filter(f => ids.has(f.studentId)));
+    const okAwards = mpsSaveAwards(mpsAwards().filter(a => ids.has(a.studentId)));
+    if(!okMarks || !okFees || !okAwards){
+      $('dangerMsg').textContent = 'Some orphan records could not be removed — browser storage may be full.';
+      refresh();
+      return;
+    }
     const after = mpsMarks().length + mpsFees().length + mpsAwards().length;
     const photoRes = await mpsCleanOrphanPhotos();
     $('dangerMsg').textContent = (before-after) + ' orphan record(s) and ' + photoRes.removed + ' orphan photo(s) removed.';

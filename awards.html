@@ -125,7 +125,7 @@
     const grades = Array.from(new Set(students.map(s => s.grade).filter(Boolean)));
     $('fClass').innerHTML = '<option value="">All classes</option>' + Array.from(new Set(grades)).sort((a,b)=>{
       const ia=mpsGradeIndex(a), ib=mpsGradeIndex(b); return (ia<0?999:ia)-(ib<0?999:ib);
-    }).map(g => '<option value="' + esc(g) + '">Class ' + esc(g) + '</option>').join('');
+    }).map(g => '<option value="' + esc(g) + '">' + esc(g.toLowerCase()==='graduated'?'Graduated':'Class ' + g) + '</option>').join('');
   }
 
   /* -------- rankings -------- */
@@ -147,15 +147,24 @@
 
   function initials(name){ return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase(); }
 
+  function markClass(entry){
+    const s = entry.student || {};
+    const m = entry.mark || {};
+    // New marks store the class at the time of the exam. Fall back to the
+    // current student class for older records that predate that snapshot.
+    return mpsClassLabel({ grade: m.grade || s.grade || '', section: m.section || s.section || '' });
+  }
+
   function boardRow(entry, index){
     const s = entry.student;
     const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index+1);
+    const cls = markClass(entry);
     return '<div class="rank-row top' + Math.min(index+1,3) + '">' +
       '<div class="pos">' + medal + '</div>' +
       mpsAvatar(s) +
-      '<div class="who"><b>' + esc(s.name||'(no name)') + '</b><span class="meta">' + esc(mpsClassLabel(s)) + ' · ' + esc((entry.mark && entry.mark.exam) || '') + '</span></div>' +
+      '<div class="who"><b>' + esc(s.name||'(no name)') + '</b><span class="meta">' + esc(cls) + ' · ' + esc((entry.mark && entry.mark.exam) || '') + '</span></div>' +
       '<span class="pct">' + entry.pct + '%</span>' +
-      '<button class="mini" type="button" data-award="' + esc(s.id) + '" data-pct="' + entry.pct + '">Award</button>' +
+      '<button class="mini" type="button" data-award="' + esc(s.id) + '" data-pct="' + entry.pct + '" data-cls="' + esc(cls) + '">Award</button>' +
     '</div>';
   }
 
@@ -170,14 +179,27 @@
       : '<div class="empty">No marks recorded yet. <a href="marks.html" style="text-decoration:underline">Enter marks</a> to build rankings.</div>';
     mpsHydrateAvatars($('schoolBoard'));
 
-    const classes = mpsClassListFrom(students);
+    // Group by the class stored on the mark, so a promoted student's old
+    // results stay under the class where they were earned.
+    const classMap = new Map();
+    board.forEach(x => {
+      const m = x.mark || {};
+      const grade = m.grade || x.student.grade || '';
+      const section = m.section || x.student.section || '';
+      const key = grade + '|' + section;
+      if(!classMap.has(key)) classMap.set(key, { grade, section, label: mpsClassLabel({ grade, section }), list: [] });
+      classMap.get(key).list.push(x);
+    });
+    const classes = Array.from(classMap.values()).sort((a,b) => {
+      const ia = mpsGradeIndex(a.grade), ib = mpsGradeIndex(b.grade);
+      return (ia<0?999:ia) - (ib<0?999:ib) || String(a.section||'').localeCompare(String(b.section||''));
+    });
     const html = classes.map(c => {
-      const list = board.filter(x => String(x.student.grade||'') === c.grade && String(x.student.section||'') === c.section).slice(0,3);
-      if(!list.length) return '';
+      const list = c.list.slice(0,3);
       return '<div class="ct"><h4>' + esc(c.label) + '</h4>' +
         list.map((x,i) => '<div class="rank-row top' + (i+1) + '" style="padding:6px 8px;margin-top:4px;background:#fff"><div class="pos">' + (i+1) + '</div>' +
           '<div class="who"><b style="font-size:12.5px">' + esc(x.student.name||'') + '</b></div><span class="pct">' + x.pct + '%</span>' +
-          '<button class="mini" type="button" data-award="' + esc(x.student.id) + '" data-pct="' + x.pct + '">Award</button></div>').join('') +
+          '<button class="mini" type="button" data-award="' + esc(x.student.id) + '" data-pct="' + x.pct + '" data-cls="' + esc(c.label) + '">Award</button></div>').join('') +
       '</div>';
     }).join('');
     $('classBoard').innerHTML = html || '<div class="empty">Enter marks to see class-wise toppers.</div>';
@@ -198,7 +220,7 @@
     $('aStudent').value = s.id;
     $('aKind').value = 'award';
     $('aCategory').value = 'Academic';
-    $('aTitle').value = 'Top performer · ' + mpsClassLabel(s) + ' (' + b.dataset.pct + '%)';
+    $('aTitle').value = 'Top performer · ' + (b.dataset.cls || mpsClassLabel(s)) + ' (' + b.dataset.pct + '%)';
     $('aSession').value = scope === 'all' ? session : session;
     $('aNote').value = scope === 'all' ? 'All-time school record' : 'Session topper';
     $('awardForm').scrollIntoView({ behavior:'smooth', block:'center' });
