@@ -1,0 +1,76 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Page not found — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  :root{--n9:#0e1b34;--n8:#182746;--n7:#243a5e;--n1:#dfe6f2;--g:#dcae2e;--g2:#f2dc94;--bg:#f7f5f0}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter Tight',system-ui,sans-serif;background:var(--bg);color:var(--n9);line-height:1.6}
+  h1,h2,h3,.serif{font-family:Fraunces,Georgia,serif;font-weight:600;line-height:1.15;margin:0}
+  a{color:inherit;text-decoration:none}
+  .bar{background:#070f20;color:#fff}
+  .bar .in{max-width:1100px;margin:auto;padding:0 24px;height:68px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .logo{display:flex;gap:12px;align-items:center;font:600 20px Fraunces,serif}
+  .logo i{width:38px;height:38px;border-radius:50%;background:var(--g);color:#070f20;display:grid;place-items:center;font-style:normal}
+  .logo small{display:block;font:500 10px 'Inter Tight';letter-spacing:.18em;color:var(--g2);text-transform:uppercase}
+  .bar a.home{font-size:13px;font-weight:600;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:7px 14px}
+  .bar a.home:hover{border-color:var(--g2);color:var(--g2)}
+  .nf{max-width:760px;margin:auto;padding:72px 24px 90px;text-align:center}
+  .nf .code{font:600 86px/1 Fraunces,serif;color:var(--g);letter-spacing:.02em}
+  .nf h1{font-size:clamp(26px,4vw,38px);margin:12px 0 12px}
+  .nf p{color:#5b7fae;max-width:540px;margin:0 auto 26px}
+  .nf-links{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .nf-links a{border:1px solid #b9c8e0;border-radius:999px;padding:10px 17px;background:#fff;font-weight:600;font-size:13px;transition:.2s}
+  .nf-links a.primary{background:#070f20;border-color:#070f20;color:#fff}
+  .nf-links a:hover{border-color:#0e1b34;transform:translateY(-2px)}
+  .nf .hint{margin-top:30px;font-size:12px;color:#5b7fae}
+  .nf code{background:#fff;border:1px solid #e2e8f0;border-radius:4px;padding:1px 5px;font-size:12px}
+</style></head><body>
+<div class="bar"><div class="in"><div class="logo"><i>M</i><span>Mamta Public School<small>Ronija · Greater Noida</small></span></div><a class="home" href="#" data-page="index">School website</a></div></div>
+<main class="nf">
+  <div class="code">404</div>
+  <h1>This page is not here</h1>
+  <p>The address may be mistyped, or the page moved. Everything on the school website is reachable from the links below.</p>
+  <div class="nf-links">
+    <a class="primary" href="#" data-page="index">School website</a>
+    <a href="#" data-page="login">Admin login</a>
+    <a href="#" data-page="students">Student database</a>
+    <a href="#" data-page="admit-card">Admit card</a>
+    <a href="#" data-page="id-card">ID card</a>
+  </div>
+  <p class="hint" id="nfHint">If you typed a page name without <code>.html</code>, the correct page will open automatically.</p>
+</main>
+<script>
+(function(){
+  /* A custom 404 can be served from any depth, so work out the site root by
+     probing a known file rather than trusting relative links. */
+  var known = ['index','login','dashboard','students','fees','marks','awards','analytics','sessions','id-card','admit-card','bell-system','print','verify'];
+  var segs = decodeURIComponent(location.pathname).split('/').filter(Boolean);
+  var last = (segs[segs.length - 1] || '').toLowerCase().replace(/\.html$/, '');
+  var candidates = [];
+  if(segs.length > 1) candidates.push('/' + segs[0] + '/');
+  candidates.push('/');
+
+  function probe(root){
+    return fetch(root + 'common.js', { method:'HEAD', cache:'no-store' })
+      .then(function(r){ return r.ok ? root : null; })
+      .catch(function(){ return null; });
+  }
+  (async function(){
+    var root = '/';
+    for(var i = 0; i < candidates.length; i++){
+      var ok = await probe(candidates[i]);
+      if(ok){ root = ok; break; }
+    }
+    document.querySelectorAll('[data-page]').forEach(function(a){
+      a.href = root + a.dataset.page + '.html';
+    });
+    if(known.indexOf(last) >= 0){
+      document.getElementById('nfHint').textContent = 'Opening ' + last + '.html …';
+      location.replace(root + last + '.html' + location.search + location.hash);
+    }
+  })();
+})();
+</script>
+</body></html>

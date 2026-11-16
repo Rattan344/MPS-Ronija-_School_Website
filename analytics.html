@@ -1,0 +1,316 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="School analytics: class strength, fee collection, average scores, top performers and students needing attention at Mamta Public School.">
+<title>Analytics — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .page-actions a{font-size:12px;border:1px solid #b9c8e0;border-radius:999px;padding:6px 11px;background:#fff;color:var(--n8);font-weight:600}
+  .page-actions a:hover{border-color:var(--n9)}
+  #classTable td,#classTable th{white-space:nowrap}
+  #classTable td.wrap{white-space:normal;min-width:150px}
+  .collection{display:flex;align-items:center;gap:8px;min-width:130px}
+  .collection .bar{flex:1;min-width:60px}
+  .collection span{font-size:11.5px;color:#5b7fae;min-width:34px;text-align:right}
+  .rank-row .who b{font-size:13px}
+  .rank-row .meta{font-size:11px;color:#5b7fae}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.split{grid-template-columns:1fr}}
+  .list-line{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #eef1f6;font-size:13px}
+  .list-line:last-child{border-bottom:0}
+  .list-line b{font-weight:600}
+  .list-line small{color:#5b7fae}
+</style>
+</head><body>
+<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Analytics</span></div>
+  <div class="toolbar">
+    <a class="back" href="students.html">Students</a>
+    <a class="back" href="marks.html">Marks</a>
+    <a class="back" href="fees.html">Fees</a>
+    <a class="back" href="awards.html">Awards</a>
+    <a class="back" href="sessions.html">Sessions</a>
+    <a class="back" href="dashboard.html">← Dashboard</a>
+    <button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button>
+  </div></div></div>
+
+<main class="admin-main">
+  <div class="admin-head">
+    <div><h1>School analytics</h1>
+      <p>A single view of strength, academics and money. Everything is calculated live from the student database, marks and fee ledger.</p></div>
+    <div class="page-actions">
+      <label for="sessionSel" style="margin:0;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#5b7fae">Session</label>
+      <select id="sessionSel" style="width:auto;padding:7px 11px;font-size:12.5px"></select>
+      <span class="session-chip">Live data <b>local</b></span>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="split">
+    <section class="panel">
+      <div class="panel-head"><h2>Fee collection</h2><span class="hint" id="feeHint"></span></div>
+      <div id="feeBars"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Academics</h2><span class="hint" id="acadHint"></span></div>
+      <div id="acadSummary"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Class-wise report</h2>
+      <div class="toolbar"><button class="mini" type="button" id="exportCsv">Export CSV</button></div>
+    </div>
+    <div class="table-wrap">
+      <table class="data" id="classTable">
+        <thead><tr>
+          <th>Class</th><th class="num">Active</th><th class="num">Scored</th><th class="num">Average</th><th class="num">Highest</th>
+          <th>Top student</th><th class="num">Billed</th><th class="num">Collected</th><th class="num">Due</th><th>Collection</th><th class="num">Awards</th>
+        </tr></thead>
+        <tbody id="classRows"></tbody>
+        <tfoot id="classFoot"></tfoot>
+      </table>
+    </div>
+    <div class="empty" id="classEmpty" hidden>No classes yet. Add students first.</div>
+  </section>
+
+  <div class="split">
+    <section class="panel">
+      <div class="panel-head"><h2>Top 10 · this session</h2><span class="hint" id="boardSessionHint"></span></div>
+      <div class="ranking" id="boardSession"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Top 10 · all-time</h2><span class="hint">best score across sessions</span></div>
+      <div class="ranking" id="boardAll"></div>
+    </section>
+  </div>
+
+  <div class="split">
+    <section class="panel">
+      <div class="panel-head"><h2>Fee follow-up</h2><span class="hint">highest dues</span></div>
+      <div id="defaulters"></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Needs academic help</h2><span class="hint">below 33%</span></div>
+      <div id="lowScores"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const today = () => new Date().toISOString().slice(0,10);
+  let students = mpsStudents();
+  let fees = mpsFees();
+  let marks = mpsMarks();
+  let awards = mpsAwards();
+  let config = mpsConfig();
+  let session = config.activeSession;
+  let computed = null;
+
+  $('sessionSel').innerHTML = config.sessions.slice().reverse().map(s => '<option' + (s===session?' selected':'') + '>' + esc(s) + '</option>').join('');
+
+  function initials(name){ return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase(); }
+  function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(label) + '</div><div class="s">' + esc(sub) + '</div></div>'; }
+
+  /* -------- one pass over all data -------- */
+  function compute(){
+    const active = students.filter(mpsIsActive);
+    const byId = new Map(students.map(s => [s.id, s]));
+
+    /* fees for the chosen session */
+    const feeMap = new Map();
+    fees.forEach(f => {
+      if(f.session !== session) return;
+      const o = feeMap.get(f.studentId) || { billed:0, paid:0 };
+      o.billed += Number(f.amount) || 0;
+      o.paid += Number(f.paid) || 0;
+      feeMap.set(f.studentId, o);
+    });
+
+    /* best score this session and all-time, per student */
+    const bestSession = new Map(), bestAll = new Map();
+    marks.forEach(m => {
+      const pct = mpsPercentFromMark(m);
+      if(pct == null) return;
+      const prevAll = bestAll.get(m.studentId);
+      if(!prevAll || pct > prevAll.pct) bestAll.set(m.studentId, { pct, mark: m });
+      if(m.session === session){
+        const prev = bestSession.get(m.studentId);
+        if(!prev || pct > prev.pct) bestSession.set(m.studentId, { pct, mark: m });
+      }
+    });
+
+    /* class grouping */
+    const classes = mpsClassListFrom(students);
+    const rows = classes.map(c => {
+      const list = students.filter(s => String(s.grade||'') === c.grade && String(s.section||'') === c.section);
+      const activeList = list.filter(mpsIsActive);
+      let billed=0, paid=0, scored=0, sum=0, high=null, top=null, awardCount=0;
+      activeList.forEach(s => {
+        const f = feeMap.get(s.id);
+        if(f){ billed += f.billed; paid += f.paid; }
+        const b = bestSession.get(s.id);
+        if(b){ scored++; sum += b.pct; if(high == null || b.pct > high) high = b.pct; if(!top || b.pct > top.pct) top = { student:s, pct:b.pct }; }
+        awardCount += awards.filter(a => a.studentId === s.id && a.session === session).length;
+      });
+      billed = Math.round(billed*100)/100; paid = Math.round(paid*100)/100;
+      const due = Math.max(0, Math.round((billed-paid)*100)/100);
+      return { c, list, activeList, billed, paid, due, scored, avg: scored ? Math.round(sum/scored*10)/10 : null, high, top, awardCount };
+    });
+
+    const totals = rows.reduce((t,r) => {
+      t.students += r.activeList.length; t.billed += r.billed; t.paid += r.paid; t.due += r.due;
+      t.scored += r.scored; t.sum += (r.avg||0)*r.scored; t.awards += r.awardCount;
+      if(r.high != null && (t.high == null || r.high > t.high)) t.high = r.high;
+      return t;
+    }, { students:0, billed:0, paid:0, due:0, scored:0, sum:0, awards:0, high:null });
+    totals.avg = totals.scored ? Math.round(totals.sum/totals.scored*10)/10 : null;
+    totals.collection = totals.billed > 0 ? Math.round(totals.paid/totals.billed*1000)/10 : 0;
+
+    const rank = (map) => Array.from(map.entries())
+      .map(([id,o]) => ({ student: byId.get(id), pct: o.pct, mark: o.mark }))
+      .filter(x => x.student)
+      .sort((a,b) => b.pct - a.pct || String(a.student.name||'').localeCompare(String(b.student.name||'')));
+
+    const defaulters = active.map(s => {
+      const f = feeMap.get(s.id);
+      if(!f) return null;
+      const due = Math.max(0, Math.round((f.billed-f.paid)*100)/100);
+      return due > 0 ? { student:s, due } : null;
+    }).filter(Boolean).sort((a,b) => b.due - a.due);
+
+    const low = active.map(s => {
+      const b = bestSession.get(s.id);
+      return b && b.pct < 33 ? { student:s, pct:b.pct } : null;
+    }).filter(Boolean).sort((a,b) => a.pct - b.pct);
+
+    computed = { rows, totals, rankSession: rank(bestSession), rankAll: rank(bestAll), defaulters, low, activeCount: active.length, feeMap, bestSession, bestAll };
+  }
+
+  /* -------- render -------- */
+  function renderKpis(){
+    const t = computed.totals;
+    const awardsSession = awards.filter(a => a.session === session);
+    $('kpis').innerHTML = [
+      kpi(computed.activeCount, 'Active students', students.length + ' total records', 'info'),
+      kpi(t.collection + '%', 'Fee collection', mpsCurrency(t.paid) + ' of ' + mpsCurrency(t.billed), t.collection >= 90 ? 'good' : t.collection >= 60 ? 'gold' : 'bad'),
+      kpi(mpsCurrency(t.due), 'Outstanding', computed.defaulters.length + ' student(s) with dues', t.due > 0 ? 'bad' : 'good'),
+      kpi(t.avg == null ? '—' : t.avg + '%', 'Average score', t.scored + ' students scored', 'gold'),
+      kpi(awardsSession.length, 'Awards this session', awards.length + ' total', 'info')
+    ].join('');
+  }
+
+  function bar(pct, cls){
+    return '<div class="bar ' + (cls||'') + '"><i style="width:' + Math.max(0,Math.min(100,pct)) + '%"></i></div>';
+  }
+
+  function renderFeePanel(){
+    const t = computed.totals;
+    $('feeHint').textContent = mpsCurrency(t.paid) + ' collected of ' + mpsCurrency(t.billed);
+    const rows = computed.rows.filter(r => r.billed > 0).sort((a,b) => b.due - a.due);
+    const html = ['<div style="margin-bottom:12px">' +
+      '<div class="list-line"><b>Total collection</b><span>' + t.collection + '%</span></div>' +
+      bar(t.collection, t.collection >= 90 ? 'good' : t.collection < 60 ? 'bad' : '') +
+      '</div>'].concat(rows.slice(0,8).map(r => {
+      const pct = r.billed > 0 ? Math.round(r.paid/r.billed*1000)/10 : 0;
+      return '<div class="list-line"><span><b>' + esc(r.c.label) + '</b><br><small>' + mpsCurrency(r.paid) + ' / ' + mpsCurrency(r.billed) + '</small></span>' +
+        '<span style="min-width:120px"><div class="collection">' + bar(pct, pct >= 90 ? 'good' : pct < 60 ? 'bad' : '') + '<span>' + pct + '%</span></div></span></div>';
+    })).join('');
+    $('feeBars').innerHTML = rows.length ? html : '<div class="empty">No fee entries for ' + esc(session) + '. <a href="fees.html" style="text-decoration:underline">Add charges</a>.</div>';
+  }
+
+  function renderAcadPanel(){
+    const t = computed.totals;
+    const top = computed.rankSession[0];
+    $('acadHint').textContent = t.scored + ' students scored';
+    $('acadSummary').innerHTML =
+      '<div class="list-line"><span><b>Class average</b><br><small>all classes</small></span><b>' + (t.avg==null?'—':t.avg+'%') + '</b></div>' +
+      '<div class="list-line"><span><b>Highest score</b><br><small>this session</small></span><b>' + (t.high==null?'—':t.high+'%') + '</b></div>' +
+      '<div class="list-line"><span><b>School topper</b><br><small>' + (top ? esc(mpsClassLabel(top.student)) : 'no marks yet') + '</small></span><b>' + (top ? esc(top.student.name||'') + ' · ' + top.pct + '%' : '—') + '</b></div>' +
+      '<div class="list-line"><span><b>Awards this session</b><br><small>awards + scholarships</small></span><b>' + t.awards + '</b></div>' +
+      '<div class="list-line"><span><b>Low scores</b><br><small>below 33%</small></span><b style="color:' + (computed.low.length?'#b91c1c':'#166534') + '">' + computed.low.length + '</b></div>';
+  }
+
+  function renderClassTable(){
+    const rows = computed.rows;
+    $('classRows').innerHTML = rows.map(r => {
+      const pct = r.billed > 0 ? Math.round(r.paid/r.billed*1000)/10 : 0;
+      return '<tr>' +
+        '<td><b>' + esc(r.c.label) + '</b></td>' +
+        '<td class="num">' + r.activeList.length + '</td>' +
+        '<td class="num">' + r.scored + '</td>' +
+        '<td class="num">' + (r.avg==null?'—':r.avg+'%') + '</td>' +
+        '<td class="num">' + (r.high==null?'—':r.high+'%') + '</td>' +
+        '<td class="wrap">' + (r.top ? esc(r.top.student.name||'') + ' <span class="badge muted">' + r.top.pct + '%</span>' : '—') + '</td>' +
+        '<td class="num">' + mpsCurrency(r.billed) + '</td>' +
+        '<td class="num">' + mpsCurrency(r.paid) + '</td>' +
+        '<td class="num">' + (r.due>0?'<b style="color:#b91c1c">'+mpsCurrency(r.due)+'</b>':'—') + '</td>' +
+        '<td><div class="collection">' + bar(pct, pct>=90?'good':pct<60&&r.billed>0?'bad':'') + '<span>' + (r.billed>0?pct+'%':'—') + '</span></div></td>' +
+        '<td class="num">' + r.awardCount + '</td></tr>';
+    }).join('');
+    const t = computed.totals;
+    $('classFoot').innerHTML = '<tr><td>School</td><td class="num">' + t.students + '</td><td class="num">' + t.scored + '</td><td class="num">' + (t.avg==null?'—':t.avg+'%') + '</td><td class="num">' + (t.high==null?'—':t.high+'%') + '</td><td></td><td class="num">' + mpsCurrency(t.billed) + '</td><td class="num">' + mpsCurrency(t.paid) + '</td><td class="num">' + mpsCurrency(t.due) + '</td><td>' + t.collection + '%</td><td class="num">' + t.awards + '</td></tr>';
+    $('classEmpty').hidden = rows.length > 0;
+  }
+
+  function boardRow(entry, index){
+    const s = entry.student;
+    return '<div class="rank-row top' + Math.min(index+1,3) + '">' +
+      '<div class="pos">' + (index+1) + '</div>' +
+      mpsAvatar(s) +
+      '<div class="who"><b>' + esc(s.name||'') + '</b><span class="meta">' + esc(mpsClassLabel(s)) + ' · ' + esc((entry.mark&&entry.mark.exam)||'') + (entry.mark && entry.mark.session !== session ? ' · ' + esc(entry.mark.session) : '') + '</span></div>' +
+      '<span class="pct">' + entry.pct + '%</span></div>';
+  }
+
+  function renderBoards(){
+    const a = computed.rankSession.slice(0,10);
+    const b = computed.rankAll.slice(0,10);
+    $('boardSessionHint').textContent = a.length ? session : 'no marks yet';
+    $('boardSession').innerHTML = a.length ? a.map(boardRow).join('') : '<div class="empty">No marks for this session. <a href="marks.html" style="text-decoration:underline">Enter marks</a>.</div>';
+    $('boardAll').innerHTML = b.length ? b.map(boardRow).join('') : '<div class="empty">No marks recorded yet.</div>';
+    mpsHydrateAvatars($('boardSession'));
+    mpsHydrateAvatars($('boardAll'));
+  }
+
+  function renderLists(){
+    $('defaulters').innerHTML = computed.defaulters.length
+      ? computed.defaulters.slice(0,10).map(d =>
+        '<div class="list-line"><span><b>' + esc(d.student.name||'') + '</b><br><small>' + esc(mpsClassLabel(d.student)) + ' · ' + esc(d.student.adm||d.student.roll||'') + '</small></span>' +
+        '<b style="color:#b91c1c">' + mpsCurrency(d.due) + '</b></div>').join('')
+      : '<div class="empty" style="padding:14px">No pending fees. 🎉</div>';
+    $('lowScores').innerHTML = computed.low.length
+      ? computed.low.slice(0,10).map(d =>
+        '<div class="list-line"><span><b>' + esc(d.student.name||'') + '</b><br><small>' + esc(mpsClassLabel(d.student)) + '</small></span>' +
+        '<b>' + d.pct + '%</b></div>').join('')
+      : '<div class="empty" style="padding:14px">No student below 33% this session.</div>';
+  }
+
+  function renderAll(){
+    compute();
+    renderKpis(); renderFeePanel(); renderAcadPanel(); renderClassTable(); renderBoards(); renderLists();
+  }
+
+  $('sessionSel').addEventListener('change', () => { session = $('sessionSel').value; renderAll(); });
+
+  $('exportCsv').onclick = () => {
+    const t = computed.totals;
+    const rows = [['Class','Active students','Scored','Average %','Highest %','Top student','Billed','Collected','Due','Collection %','Awards']];
+    computed.rows.forEach(r => rows.push([r.c.label, r.activeList.length, r.scored, r.avg==null?'':r.avg, r.high==null?'':r.high, r.top?r.top.student.name:'', r.billed, r.paid, r.due, r.billed?Math.round(r.paid/r.billed*1000)/10:0, r.awardCount]));
+    rows.push(['SCHOOL', t.students, t.scored, t.avg==null?'':t.avg, t.high==null?'':t.high, '', t.billed, t.paid, t.due, t.collection, t.awards]);
+    const csv = rows.map(r => r.map(v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mps-analytics-' + session.replace(/[^\w]+/g,'-') + '-' + today() + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+
+  renderAll();
+})();
+</script></body></html>

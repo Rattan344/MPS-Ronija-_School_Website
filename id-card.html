@@ -364,13 +364,14 @@ If found, please return to the school address above.</textarea>
     $('printBoth').addEventListener('click', () => saveAndGo(['front','back']));
 
     // Pre-fill from the student database (single student hand-off).
+    (async function(){
     const prefill = readSessionJSON('mps-card-prefill', null);
     if(prefill && prefill.student){
-      const s = prefill.student;
+      const s = (await mpsHydratePhotos([prefill.student]))[0] || prefill.student;
       $('name').value = s.name || '';
       $('grade').value = s.grade || '';
       $('section').value = s.section || '';
-      $('roll').value = s.roll || '';
+      $('roll').value = s.roll || s.adm || '';
       $('blood').value = s.blood || '';
       $('dob').value = s.dob || '';
       $('valid').value = s.valid || '';
@@ -379,8 +380,10 @@ If found, please return to the school address above.</textarea>
       $('contact').value = s.contact || '';
       $('address').value = s.address || '';
       photoData = typeof s.photo === 'string' ? s.photo : '';
+      renderPreview();
       removeStoredJSON('mps-card-prefill');
     }
+    })();
 
     $('clearCardData').addEventListener('click', () => {
       removeStoredJSON('mps-card-data');

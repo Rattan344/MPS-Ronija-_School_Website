@@ -177,7 +177,7 @@
   </div>
   <script src="common.js"></script>
   <script>
-  (function(){
+  (async function(){
     const d = readSessionJSON('mps-card-data', null);
     const printCfg = readSessionJSON('mps-card-print', { sides: ['front'] });
     const batch = readSessionJSON('mps-card-batch', null);
@@ -224,7 +224,7 @@
       }, mpsStudentToCard(student));
     }
 
-    const cards = isBatch ? batchStudents.map(toCardData) : [d];
+    const cards = isBatch ? (await mpsHydratePhotos(batchStudents)).map(toCardData) : [d];
     const multi = cards.length > 1;
 
     // Page size follows the selected card layout: portrait (vertical) or

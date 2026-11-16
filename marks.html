@@ -1,0 +1,263 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Record exam marks class-wise and rank students at Mamta Public School.">
+<title>Marks &amp; Exams — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  .page-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .page-actions a{font-size:12px;border:1px solid #b9c8e0;border-radius:999px;padding:6px 11px;background:#fff;color:var(--n8);font-weight:600}
+  .page-actions a:hover{border-color:var(--n9)}
+  #rows input{width:82px;padding:6px 8px;font-size:13px;text-align:right;display:inline-block}
+  #rows td{white-space:nowrap}
+  #rows .who{white-space:normal}
+  .rank{font-weight:700;color:#a97812}
+</style>
+</head><body>
+<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Marks &amp; Exams</span></div>
+  <div class="toolbar">
+    <a class="back" href="students.html">Students</a>
+    <a class="back" href="fees.html">Fees</a>
+    <a class="back" href="awards.html">Awards</a>
+    <a class="back" href="analytics.html">Analytics</a>
+    <a class="back" href="dashboard.html">← Dashboard</a>
+    <button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button>
+  </div></div></div>
+
+<main class="admin-main">
+  <div class="admin-head">
+    <div><h1>Marks &amp; exams</h1>
+      <p>Enter marks once per class and exam. Scores feed class ranks, top performers, awards and the analytics page automatically.</p></div>
+    <span class="session-chip">Session <b id="sessionLabel">—</b></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="panel">
+    <div class="filters">
+      <div><label for="cls">Class</label><select id="cls"></select></div>
+      <div><label for="exam">Exam / test name</label><input id="exam" list="examList" placeholder="e.g. Half-Yearly" maxlength="40"></div>
+      <div style="grid-column:span 2"><label for="q">Search student</label><input id="q" placeholder="Name or admission no."></div>
+      <div><button class="mini solid" id="saveBtn" type="button" style="margin-bottom:1px">Save marks</button></div>
+      <div><button class="mini warn" id="clearExam" type="button" style="margin-bottom:1px">Clear this exam</button></div>
+    </div>
+    <p class="note" id="modeNote" style="margin-top:12px">Choose a class and exam name, fill obtained marks, then save. Leave a box empty to skip that student.</p>
+
+    <div class="panel-head" style="margin-top:16px">
+      <h2 id="tableTitle">Marks</h2>
+      <span class="hint" id="savedInfo"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th style="width:44px">#</th>
+          <th>Student</th>
+          <th class="num">Obtained</th>
+          <th class="num">Out of</th>
+          <th class="num">Score</th>
+          <th class="num">Grade</th>
+          <th class="num">Class rank</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden>No students in this class match the search.</div>
+  </section>
+</main>
+<datalist id="examList"></datalist>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  let students = mpsStudents();
+  let session = mpsSession();
+  let lastClass = readSessionJSON('mps-marks-class', '');
+  let lastExam = readSessionJSON('mps-marks-exam', '');
+  const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+  $('sessionLabel').textContent = session;
+
+  /* -------- options -------- */
+  const classes = mpsClassListFrom(students);
+  $('cls').innerHTML = classes.length
+    ? classes.map(c => '<option value="' + esc(c.grade) + '|' + esc(c.section) + '">' + esc(c.label) + ' — ' + c.count + '</option>').join('')
+    : '<option value="">No classes yet</option>';
+
+  const exams = Array.from(new Set(mpsMarks().filter(m => m.session === session).map(m => m.exam).filter(Boolean)));
+  $('examList').innerHTML = exams.map(e => '<option value="' + esc(e) + '">').join('')
+    + ['Unit Test 1','Unit Test 2','Half-Yearly','Annual Examination','Pre-Board'].map(e => '<option value="' + e + '">').join('');
+
+  const focusStudent = params.get('student') ? mpsStudentById(params.get('student')) : null;
+  if(focusStudent){
+    $('cls').value = String(focusStudent.grade||'') + '|' + String(focusStudent.section||'');
+    $('q').value = focusStudent.name || '';
+  } else if(lastClass){
+    const match = classes.find(c => (c.grade + '|' + c.section) === lastClass);
+    if(match) $('cls').value = lastClass;
+  }
+  $('exam').value = lastExam || (exams[0] || 'Half-Yearly');
+
+  function currentClass(){
+    const [grade, section] = String($('cls').value || '').split('|');
+    return { grade: grade || '', section: section || '' };
+  }
+
+  function classStudents(){
+    const c = currentClass();
+    return students.filter(s => String(s.grade||'') === c.grade && String(s.section||'') === c.section);
+  }
+
+  /* -------- marks lookup -------- */
+  function marksMap(){
+    const exam = $('exam').value.trim();
+    const map = new Map();
+    if(!exam) return map;
+    mpsMarks().forEach(m => {
+      if(m.session === session && m.exam === exam) map.set(m.studentId, m);
+    });
+    return map;
+  }
+
+  function classRanking(){
+    const map = marksMap();
+    const list = classStudents().map(s => {
+      const m = map.get(s.id);
+      return { id: s.id, name: s.name, pct: m ? mpsPercentFromMark(m) : null };
+    }).filter(x => x.pct != null).sort((a,b) => b.pct - a.pct);
+    const ranks = new Map();
+    list.forEach((x,i) => {
+      const prev = list[i-1];
+      ranks.set(x.id, prev && prev.pct === x.pct ? ranks.get(prev.id) : i+1);
+    });
+    return { ranks, list };
+  }
+
+  function renderKpis(){
+    const list = classStudents();
+    const map = marksMap();
+    const scored = list.map(s => map.get(s.id)).filter(Boolean).map(mpsPercentFromMark).filter(p => p != null);
+    const avg = scored.length ? Math.round(scored.reduce((a,b)=>a+b,0)/scored.length*10)/10 : null;
+    const high = scored.length ? Math.max.apply(null, scored) : null;
+    $('kpis').innerHTML = [
+      kpi(list.length, 'Students in class', currentClass().grade ? 'Class ' + currentClass().grade : 'choose a class'),
+      kpi(scored.length, 'Marks entered', $('exam').value.trim() || 'no exam name', 'info'),
+      kpi(avg == null ? '—' : avg + '%', 'Class average', scored.length + ' scored'),
+      kpi(high == null ? '—' : high + '%', 'Highest score', high == null ? '' : mpsGradeLetter(high), 'gold')
+    ].join('');
+  }
+  function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(label) + '</div><div class="s">' + esc(sub) + '</div></div>'; }
+
+  function rowHtml(s, idx, marks, ranks){
+    const m = marks.get(s.id);
+    const pct = m ? mpsPercentFromMark(m) : null;
+    const rank = ranks.get(s.id);
+    const initials = String(s.name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase();
+    return '<tr data-id="' + esc(s.id) + '">' +
+      '<td>' + (idx+1) + '</td>' +
+      '<td><div class="who">' + mpsAvatar(s) +
+        '<div><b>' + esc(s.name||'(no name)') + '</b><small>' + esc(s.adm||s.roll||'') + '</small></div></div></td>' +
+      '<td class="num"><input type="number" class="obt" min="0" step="0.5" value="' + (m && m.obtained != null ? esc(m.obtained) : '') + '" aria-label="Marks obtained"></td>' +
+      '<td class="num"><input type="number" class="max" min="1" step="1" value="' + (m && m.max ? esc(m.max) : 100) + '" aria-label="Out of"></td>' +
+      '<td class="num pct">' + (pct == null ? '—' : pct + '%') + '</td>' +
+      '<td class="num grd">' + (pct == null ? '—' : mpsGradeLetter(pct)) + '</td>' +
+      '<td class="num rank">' + (rank ? '#' + rank : '—') + '</td>' +
+      '<td><div class="row-actions"><button class="mini" type="button" data-save="' + esc(s.id) + '">Save</button>' +
+        '<a class="mini" href="students.html?student=' + encodeURIComponent(s.id) + '">Profile</a></div></td></tr>';
+  }
+
+  function render(){
+    lastExam = $('exam').value.trim();
+    writeSessionJSON('mps-marks-exam', lastExam);
+    writeSessionJSON('mps-marks-class', $('cls').value);
+    const q = $('q').value.trim().toLowerCase();
+    const all = classStudents();
+    const list = all.filter(s => !q || [s.name, s.adm, s.roll].join(' ').toLowerCase().includes(q));
+    const marks = marksMap();
+    const { ranks, list: ranked } = classRanking();
+    const c = currentClass();
+    $('tableTitle').textContent = 'Marks · ' + (c.grade ? 'Class ' + c.grade + (c.section ? ' · ' + c.section : '') : 'choose a class');
+    $('rows').innerHTML = list.map((s,i) => rowHtml(s, i, marks, ranks)).join('');
+    mpsHydrateAvatars($('rows'));
+    $('empty').hidden = list.length > 0;
+    if(!c.grade) $('empty').textContent = 'Add students to the database first.';
+    $('savedInfo').textContent = ranked.length
+      ? ranked.length + ' saved · topper ' + (ranked[0].name||'—') + ' (' + ranked[0].pct + '%)'
+      : '';
+    renderKpis();
+  }
+
+  function recomputeRowLive(tr){
+    const obt = Number(tr.querySelector('.obt').value);
+    const max = Number(tr.querySelector('.max').value);
+    const pct = max > 0 && isFinite(obt) && tr.querySelector('.obt').value !== '' ? Math.round(obt/max*1000)/10 : null;
+    tr.querySelector('.pct').textContent = pct == null ? '—' : pct + '%';
+    tr.querySelector('.grd').textContent = pct == null ? '—' : mpsGradeLetter(pct);
+  }
+
+  $('rows').addEventListener('input', (e) => {
+    if(e.target.classList.contains('obt') || e.target.classList.contains('max')) recomputeRowLive(e.target.closest('tr'));
+  });
+
+  /* -------- saving -------- */
+  function saveRows(ids){
+    const exam = $('exam').value.trim();
+    if(!exam){ alert('Enter an exam name first (e.g. Half-Yearly).'); $('exam').focus(); return; }
+    const marks = mpsMarks();
+    const index = new Map();
+    marks.forEach((m,i) => index.set(m.studentId + '|' + m.session + '|' + m.exam, i));
+    let saved = 0;
+    const rows = ids ? ids.map(id => document.querySelector('tr[data-id="' + id + '"]')).filter(Boolean) : Array.from(document.querySelectorAll('#rows tr'));
+    rows.forEach(tr => {
+      const id = tr.dataset.id;
+      const obtRaw = tr.querySelector('.obt').value;
+      const max = Number(tr.querySelector('.max').value);
+      const key = id + '|' + session + '|' + exam;
+      if(obtRaw === ''){
+        if(index.has(key)){
+          marks.splice(index.get(key), 1);
+          index.clear();
+          marks.forEach((m, i) => index.set(m.studentId + '|' + m.session + '|' + m.exam, i));
+        }
+        return;
+      }
+      const obtained = Number(obtRaw);
+      if(!isFinite(obtained) || obtained < 0 || !(max > 0)) return;
+      const record = { id: mpsNewId('mk'), studentId: id, session, exam, obtained, max, updatedAt: Date.now() };
+      if(index.has(key)){
+        const prev = marks[index.get(key)];
+        record.id = prev.id || record.id;
+        marks[index.get(key)] = record;
+      } else {
+        marks.push(record);
+        index.set(key, marks.length - 1);
+      }
+      saved++;
+    });
+    if(!mpsSaveMarks(marks)){ alert('Could not save marks — storage may be full.'); return; }
+    render();
+    if(typeof saved === 'number') $('savedInfo').textContent = 'Saved ' + saved + ' record(s) for ' + exam + '.';
+  }
+
+  $('saveBtn').onclick = () => saveRows(null);
+  $('rows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-save]');
+    if(b){ saveRows([b.dataset.save]); return; }
+  });
+
+  $('clearExam').onclick = () => {
+    const exam = $('exam').value.trim();
+    if(!exam) return;
+    if(!confirm('Delete all marks for "' + exam + '" in session ' + session + '?')) return;
+    mpsSaveMarks(mpsMarks().filter(m => !(m.session === session && m.exam === exam)));
+    render();
+  };
+
+  ['cls','exam','q'].forEach(id => $(id).addEventListener('input', render));
+  ['cls','exam'].forEach(id => $(id).addEventListener('change', render));
+
+  render();
+})();
+</script></body></html>

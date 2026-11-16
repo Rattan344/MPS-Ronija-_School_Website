@@ -51,7 +51,16 @@ table.tt{width:100%;border-collapse:collapse;margin-top:calc(5mm*var(--k,1));fon
 </style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
 <div class="top noprint"><div class="wrap"><b class="serif">Generate Admit Card</b><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><a class="back" href="dashboard.html">← Dashboard</a><button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button></div></div></div>
 <div class="wrap2">
-<div class="card noprint"><h3>Details</h3><p style="font-size:12px;color:#5b7fae;margin:0 0 10px;line-height:1.5"><a href="students.html" style="color:#0e1b34;font-weight:600">← Student database</a> to load a saved student or a whole class.</p>
+<div class="card noprint"><h3>Details</h3><p style="font-size:12px;color:#5b7fae;margin:0 0 10px;line-height:1.5"><a href="students.html" style="color:#0e1b34;font-weight:600">← Student database</a> to edit details, marks and fees.</p>
+<div id="classPick" style="border:1px solid #dfe6f2;border-radius:10px;background:#f8fafc;padding:10px;margin:0 0 12px">
+  <b style="font-size:12.5px">Print a whole class from the database</b>
+  <p style="font-size:11.5px;color:#5b7fae;margin:3px 0 7px;line-height:1.45">Loads every active student in the class. Each card gets its own serial and QR code.</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <select id="dbClass" style="flex:1;min-width:130px;width:auto"></select>
+    <button class="btn ghost" type="button" id="loadClass" style="color:#0e1b34;padding:8px 12px;font-size:12px">Load class</button>
+  </div>
+  <p id="classPickMsg" style="font-size:11.5px;color:#5b7fae;margin:6px 0 0" aria-live="polite"></p>
+</div>
 <label>Exam name / परीक्षा का नाम</label><select id="exam"><option value="Annual Examination|वार्षिक परीक्षा">Annual Examination — वार्षिक परीक्षा</option><option value="Half-Yearly Examination|अर्धवार्षिक परीक्षा">Half-Yearly — अर्धवार्षिक परीक्षा</option><option value="Mid-Term Examination|मध्यावधि परीक्षा">Mid-Term — मध्यावधि परीक्षा</option><option value="Unit Test|इकाई परीक्षा">Unit Test — इकाई परीक्षा</option><option value="Pre-Board Examination|प्री-बोर्ड परीक्षा">Pre-Board — प्री-बोर्ड परीक्षा</option><option value="custom">Custom…</option></select>
 <div id="cbox" hidden><label>Custom name (English)</label><input id="cen"><label>Custom name (हिन्दी)</label><input id="chi" placeholder="जैसे: तिमाही परीक्षा"></div>
 <label>Session / सत्र</label><input id="sess" value="2026–27">
@@ -134,7 +143,7 @@ let batchStudents=null;
 function applyStudent(s){
   $('name').value=s.name||'';
   $('cls').value=(s.grade?('Class '+s.grade):'')+(s.section?(' · '+s.section):'');
-  $('roll').value=s.roll||'';
+  $('roll').value=s.roll||s.adm||'';
   $('father').value=s.father||'';
   $('nameh').value=s.nameHi||'';
   $('fatherh').value=s.fatherHi||'';
@@ -142,19 +151,49 @@ function applyStudent(s){
   currentPhoto=(typeof s.photo==='string')?s.photo:'';
   photoMode();
 }
-const batch=readSessionJSON('mps-admit-batch',null);
-if(batch&&Array.isArray(batch.students)&&batch.students.length){
-  batchStudents=batch.students;
-  removeStoredJSON('mps-admit-prefill');
-  applyStudent(batchStudents[0]);
-  newSerial();
-  $('batchBox').hidden=false;
-  $('batchTitle').textContent=batchStudents.length+' student'+(batchStudents.length===1?'':'s')+' loaded from the database';
-  $('printAll').textContent='Print all '+batchStudents.length;
-}else{
-  const prefill=readSessionJSON('mps-admit-prefill',null);
-  if(prefill&&prefill.student){ applyStudent(prefill.student); removeStoredJSON('mps-admit-prefill'); up(); }
-}
+(async function(){
+  const batch=readSessionJSON('mps-admit-batch',null);
+  if(batch&&Array.isArray(batch.students)&&batch.students.length){
+    batchStudents=await mpsHydratePhotos(batch.students);
+    removeStoredJSON('mps-admit-prefill');
+    applyStudent(batchStudents[0]);
+    newSerial();
+    $('batchBox').hidden=false;
+    $('batchTitle').textContent=batchStudents.length+' student'+(batchStudents.length===1?'':'s')+' loaded from the database';
+    $('printAll').textContent='Print all '+batchStudents.length;
+  }else{
+    const prefill=readSessionJSON('mps-admit-prefill',null);
+    if(prefill&&prefill.student){
+      const full=(await mpsHydratePhotos([prefill.student]))[0]||prefill.student;
+      applyStudent(full);
+      removeStoredJSON('mps-admit-prefill');
+      up();
+    }
+  }
+})();
+
+/* ---- load a class directly from the database (no page change needed) ---- */
+(function(){
+  const classes=mpsClassListFrom(mpsStudents());
+  const sel=$('dbClass');
+  if(!classes.length){sel.innerHTML='<option value="">No students saved yet</option>';return}
+  sel.innerHTML=classes.map(c=>{
+    const n=mpsStudents().filter(s=>String(s.grade||'')===c.grade&&String(s.section||'')===c.section&&mpsIsActive(s)).length;
+    return '<option value="'+c.grade+'|'+c.section+'">'+c.label+' — '+n+' active</option>';
+  }).join('');
+  $('loadClass').onclick=async()=>{
+    const parts=String(sel.value||'').split('|'),grade=parts[0]||'',section=parts[1]||'';
+    const list=mpsStudents().filter(s=>String(s.grade||'')===grade&&String(s.section||'')===section&&mpsIsActive(s));
+    if(!list.length){$('classPickMsg').textContent='No active students in this class.';return}
+    $('classPickMsg').textContent='Loading '+list.length+' student(s)…';
+    batchStudents=await mpsHydratePhotos(list);
+    applyStudent(batchStudents[0]);newSerial();up();
+    $('batchBox').hidden=false;
+    $('batchTitle').textContent=batchStudents.length+' student'+(batchStudents.length===1?'':'s')+' loaded from '+sel.selectedOptions[0].textContent;
+    $('printAll').textContent='Print all '+batchStudents.length;
+    $('classPickMsg').textContent='Loaded '+list.length+' student(s). Use “Print all” to print the batch.';
+  };
+})();
 $('batchClear').onclick=()=>{ removeStoredJSON('mps-admit-batch'); batchStudents=null; $('batchBox').hidden=true; };
 $('printAll').addEventListener('click',()=>{
   if(!batchStudents||!batchStudents.length) return;

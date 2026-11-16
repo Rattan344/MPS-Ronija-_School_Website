@@ -1,0 +1,482 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Fee records, payments and outstanding dues for Mamta Public School, class-wise and student-wise.">
+<title>Fees &amp; Payments — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .page-actions a{font-size:12px;border:1px solid #b9c8e0;border-radius:999px;padding:6px 11px;background:#fff;color:var(--n8);font-weight:600}
+  .page-actions a:hover{border-color:var(--n9)}
+  #rows td{white-space:nowrap}
+  #rows .who{white-space:normal}
+  #ledgerRows td{white-space:nowrap}
+  #ledgerRows .note-cell{white-space:normal;min-width:120px}
+  .inline-form{display:grid;gap:8px}
+  .inline-form .form-grid{margin:0}
+  .results-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:12px;color:#5b7fae;margin-top:10px}
+</style>
+</head><body>
+<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Fees &amp; Payments</span></div>
+  <div class="toolbar">
+    <a class="back" href="students.html">Students</a>
+    <a class="back" href="marks.html">Marks</a>
+    <a class="back" href="awards.html">Awards</a>
+    <a class="back" href="analytics.html">Analytics</a>
+    <a class="back" href="dashboard.html">← Dashboard</a>
+    <button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button>
+  </div></div></div>
+
+<main class="admin-main">
+  <div class="admin-head">
+    <div><h1>Fees &amp; payments</h1>
+      <p>One ledger for the whole school. Charges and receipts point at the student record, so totals, defaulter lists and dashboards stay in sync automatically.</p></div>
+    <div class="page-actions">
+      <label for="sessionSel" style="margin:0;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#5b7fae">Session</label>
+      <select id="sessionSel" style="width:auto;padding:7px 11px;font-size:12.5px"></select>
+      <span class="session-chip">Mode <b id="sessionMode">—</b></span>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Class-wise billing</h2>
+      <p class="sub">Bulk actions apply to every <b>active</b> student in the chosen class for this session.</p>
+    </div>
+    <div class="grid-2">
+      <form class="inline-form" id="classChargeForm">
+        <h3>Add a charge to a class</h3>
+        <div class="form-grid tight">
+          <div><label for="ccClass">Class</label><select id="ccClass"></select></div>
+          <div><label for="ccHead">Head</label><select id="ccHead"><option>Tuition</option><option>Admission</option><option>Exam</option><option>Transport</option><option>Uniform / books</option><option>Other</option></select></div>
+          <div><label for="ccAmount">Amount per student (₹)</label><input id="ccAmount" type="number" min="1" step="0.01" required></div>
+          <div><label for="ccDue">Due date</label><input id="ccDue" type="date"></div>
+        </div>
+        <label for="ccNote">Note</label><input id="ccNote" maxlength="80" placeholder="Optional, e.g. Term 2">
+        <div class="form-actions" style="margin-top:6px"><button class="btn dark" type="submit">Add charge to class</button><span class="hint" id="ccMsg" aria-live="polite"></span></div>
+      </form>
+      <form class="inline-form" id="classPayForm">
+        <h3>Record a class payment</h3>
+        <div class="form-grid tight">
+          <div><label for="cpClass">Class</label><select id="cpClass"></select></div>
+          <div><label for="cpMode">Mode</label><select id="cpMode"><option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Cheque</option><option>Other</option></select></div>
+          <div><label for="cpAmount">Amount per student (₹)</label><input id="cpAmount" type="number" min="1" step="0.01" required></div>
+          <div><label for="cpDate">Receipt date</label><input id="cpDate" type="date"></div>
+        </div>
+        <label for="cpNote">Note</label><input id="cpNote" maxlength="80" placeholder="Optional, e.g. receipt book 4">
+        <div class="form-actions" style="margin-top:6px"><button class="btn dark" type="submit">Record payment for class</button><span class="hint" id="cpMsg" aria-live="polite"></span></div>
+      </form>
+    </div>
+    <p class="note" style="margin-top:14px">Payments are recorded against the student, not locked to one charge, so part-payments and mixed heads are fine. Delete a wrong entry from the student's ledger below.</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Student fee summary</h2>
+      <div class="toolbar">
+        <button class="mini" id="exportCsv" type="button">Export CSV</button>
+      </div>
+    </div>
+    <div class="filters">
+      <div style="grid-column:span 2"><label for="q">Search</label><input id="q" placeholder="Name, admission no., roll, phone"></div>
+      <div><label for="fClass">Class</label><select id="fClass"><option value="">All classes</option></select></div>
+      <div><label for="fStatus">Fee status</label><select id="fStatus"><option value="">Any</option><option value="unpaid">Unpaid</option><option value="partial">Partial</option><option value="paid">Paid</option><option value="none">No dues</option></select></div>
+      <div><label for="fSort">Sort by</label><select id="fSort"><option value="due">Due (high first)</option><option value="name">Name</option><option value="class">Class</option><option value="billed">Billed</option><option value="paid">Paid</option></select></div>
+      <div><button class="mini" id="clearFilters" type="button" style="margin-bottom:1px">Clear</button></div>
+    </div>
+    <div class="results-bar"><span id="countLabel"></span><span class="spacer" style="flex:1"></span><span id="totalsLabel"></span></div>
+
+    <div class="table-wrap" style="margin-top:10px">
+      <table class="data">
+        <thead><tr>
+          <th>Student</th>
+          <th class="sortable" data-sort="class">Class</th>
+          <th class="num sortable" data-sort="billed">Billed</th>
+          <th class="num sortable" data-sort="paid">Paid</th>
+          <th class="num sortable" data-sort="due">Due</th>
+          <th>Status</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+        <tfoot id="foot"></tfoot>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden>No students match these filters.</div>
+    <div class="pager" id="pager"></div>
+  </section>
+
+  <section class="panel" id="ledgerPanel" hidden>
+    <div class="panel-head">
+      <h2 id="ledgerTitle">Ledger</h2>
+      <div class="toolbar">
+        <button class="mini" id="ledgerCharge" type="button">Add charge</button>
+        <button class="mini solid" id="ledgerPay" type="button">Record payment</button>
+        <button class="mini" id="ledgerClose" type="button">Close</button>
+      </div>
+    </div>
+    <div class="results-bar" id="ledgerTotals"></div>
+    <div class="table-wrap" style="margin-top:10px">
+      <table class="data">
+        <thead><tr><th>Date</th><th>Type</th><th>Head</th><th class="num">Billed</th><th class="num">Paid</th><th>Note</th><th></th></tr></thead>
+        <tbody id="ledgerRows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="ledgerEmpty" hidden>No fee entries yet for this student in this session.</div>
+  </section>
+</main>
+
+<dialog id="chargeDlg"><form class="dlg" id="chargeForm" method="dialog">
+  <h3>Add fee charge</h3><p class="sub" id="chargeWho"></p>
+  <div class="form-grid tight">
+    <div><label for="chHead">Head</label><select id="chHead"><option>Tuition</option><option>Admission</option><option>Exam</option><option>Transport</option><option>Uniform / books</option><option>Other</option></select></div>
+    <div><label for="chAmount">Amount (₹)</label><input id="chAmount" type="number" min="0.01" step="0.01" required></div>
+    <div><label for="chDue">Due date</label><input id="chDue" type="date"></div>
+    <div><label for="chDate">Charge date</label><input id="chDate" type="date"></div>
+  </div>
+  <label for="chNote">Note</label><input id="chNote" maxlength="80">
+  <div class="dlg-actions"><button class="mini" type="button" data-close>Cancel</button><button class="btn dark" type="submit">Add charge</button></div>
+</form></dialog>
+
+<dialog id="payDlg"><form class="dlg" id="payForm" method="dialog">
+  <h3>Record payment</h3><p class="sub" id="payWho"></p>
+  <div class="form-grid tight">
+    <div><label for="pyAmount">Amount received (₹)</label><input id="pyAmount" type="number" min="0.01" step="0.01" required></div>
+    <div><label for="pyMode">Mode</label><select id="pyMode"><option>Cash</option><option>UPI</option><option>Bank transfer</option><option>Cheque</option><option>Other</option></select></div>
+    <div><label for="pyDate">Receipt date</label><input id="pyDate" type="date"></div>
+    <div><label for="pyRef">Receipt / reference no.</label><input id="pyRef" maxlength="30" placeholder="Optional"></div>
+  </div>
+  <label for="pyNote">Note</label><input id="pyNote" maxlength="80">
+  <div class="dlg-actions"><button class="mini" type="button" data-close>Cancel</button><button class="btn dark" type="submit">Save payment</button></div>
+</form></dialog>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const today = () => new Date().toISOString().slice(0,10);
+  let students = mpsStudents();
+  let config = mpsConfig();
+  let session = params.get('session') || mpsSession();
+  if(!config.sessions.includes(session)) config.sessions.push(session);
+  let page = 0;
+  const pageSize = 100;
+  let sortKey = 'due';
+  let ledgerStudentId = params.get('student') || '';
+  let chargeTargetId = '';
+  let payTargetId = '';
+
+  $('sessionSel').innerHTML = config.sessions.map(s => '<option' + (s===session?' selected':'') + '>' + esc(s) + '</option>').join('');
+  $('sessionMode').textContent = session === config.activeSession ? 'Active' : 'Past / planned';
+  $('chDate').value = today();
+  $('pyDate').value = today();
+  $('cpDate').value = today();
+
+  /* -------- helpers -------- */
+  function feeStats(){
+    const map = new Map();
+    mpsFees().forEach(f => {
+      if(f.session !== session) return;
+      const o = map.get(f.studentId) || { billed:0, paid:0, records:[] };
+      o.billed += Number(f.amount) || 0;
+      o.paid += Number(f.paid) || 0;
+      o.records.push(f);
+      map.set(f.studentId, o);
+    });
+    map.forEach(o => {
+      o.billed = Math.round(o.billed*100)/100;
+      o.paid = Math.round(o.paid*100)/100;
+      o.due = Math.max(0, Math.round((o.billed-o.paid)*100)/100);
+      o.status = o.billed <= 0 ? 'none' : o.due <= 0 ? 'paid' : o.paid > 0 ? 'partial' : 'unpaid';
+    });
+    return map;
+  }
+  let stats = feeStats();
+
+  function statusBadge(status){
+    const cls = status==='paid'?'good':status==='partial'?'warn':status==='unpaid'?'bad':'muted';
+    return '<span class="badge ' + cls + '">' + mpsFeeStatusLabel(status) + '</span>';
+  }
+  function initials(name){ return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase(); }
+  function studentRow(s){
+    const st = stats.get(s.id) || { billed:0, paid:0, due:0, status:'none' };
+    return '<tr data-id="' + esc(s.id) + '">' +
+      '<td><div class="who">' + mpsAvatar(s) +
+      '<div><b>' + esc(s.name||'(no name)') + '</b><small>' + esc(s.adm||s.roll||'') + '</small></div></div></td>' +
+      '<td>' + esc(mpsClassLabel(s).replace('Class ','')) + '</td>' +
+      '<td class="num">' + mpsCurrency(st.billed) + '</td>' +
+      '<td class="num">' + mpsCurrency(st.paid) + '</td>' +
+      '<td class="num">' + (st.due > 0 ? '<b style="color:#b91c1c">' + mpsCurrency(st.due) + '</b>' : '—') + '</td>' +
+      '<td>' + statusBadge(st.status) + '</td>' +
+      '<td><div class="row-actions">' +
+        '<button class="mini" type="button" data-act="charge" data-id="' + esc(s.id) + '">Charge</button>' +
+        '<button class="mini gold" type="button" data-act="pay" data-id="' + esc(s.id) + '">Payment</button>' +
+        '<button class="mini" type="button" data-act="ledger" data-id="' + esc(s.id) + '">Ledger</button>' +
+      '</div></td></tr>';
+  }
+
+  function filtered(){
+    const q = $('q').value.trim().toLowerCase();
+    const fClass = $('fClass').value;
+    const fStatus = $('fStatus').value;
+    let list = students.filter(s => {
+      if(fClass && String(s.grade||'') !== fClass) return false;
+      if(fStatus){ const st = stats.get(s.id); if(!st || st.status !== fStatus) return false; }
+      if(q){ const hay = [s.name,s.adm,s.roll,s.contact,s.father].join(' ').toLowerCase(); if(!hay.includes(q)) return false; }
+      return true;
+    });
+    const dir = sortKey === 'name' || sortKey === 'class' ? 1 : -1;
+    list.sort((a,b) => {
+      const sa = stats.get(a.id) || {billed:0,paid:0,due:0};
+      const sb = stats.get(b.id) || {billed:0,paid:0,due:0};
+      let va, vb;
+      if(sortKey === 'name'){ va=(a.name||'').toLowerCase(); vb=(b.name||'').toLowerCase(); }
+      else if(sortKey === 'class'){ const ia=mpsGradeIndex(a.grade), ib=mpsGradeIndex(b.grade); va=String(ia<0?999:ia).padStart(3,'0')+'·'+(a.section||''); vb=String(ib<0?999:ib).padStart(3,'0')+'·'+(b.section||''); }
+      else { va = sa[sortKey] || 0; vb = sb[sortKey] || 0; }
+      if(va < vb) return -1*dir;
+      if(va > vb) return 1*dir;
+      return String(a.name||'').localeCompare(String(b.name||''));
+    });
+    return list;
+  }
+
+  function renderKpis(){
+    let billed=0, paid=0, due=0, defaulters=0;
+    students.forEach(s => {
+      const st = stats.get(s.id);
+      if(!st) return;
+      billed += st.billed; paid += st.paid; due += st.due;
+      if(st.due > 0 && mpsIsActive(s)) defaulters++;
+    });
+    const pct = billed > 0 ? Math.round(paid/billed*1000)/10 : 0;
+    $('kpis').innerHTML = [
+      kpi(mpsCurrency(billed), 'Total billed', session),
+      kpi(mpsCurrency(paid), 'Collected', pct + '% of billed', 'good'),
+      kpi(mpsCurrency(due), 'Outstanding', defaulters + ' student(s) with dues', due>0?'bad':'good'),
+      kpi(defaulters, 'Defaulters', 'active students', defaulters?'warn':'')
+    ].join('');
+  }
+  function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(label) + '</div><div class="s">' + esc(sub) + '</div></div>'; }
+
+  function renderClassOptions(){
+    const classes = mpsClassListFrom(students);
+    const grades = Array.from(new Set(classes.map(c => c.grade)));
+    const cur = $('fClass').value;
+    $('fClass').innerHTML = '<option value="">All classes</option>' + grades.map(g => '<option value="' + esc(g) + '">Class ' + esc(g) + '</option>').join('');
+    if(grades.includes(cur)) $('fClass').value = cur;
+    const opts = classes.map(c => '<option value="' + esc(c.grade) + '|' + esc(c.section) + '">' + esc(c.label) + ' — ' + c.count + '</option>').join('');
+    $('ccClass').innerHTML = opts;
+    $('cpClass').innerHTML = opts;
+  }
+
+  function renderTable(){
+    stats = feeStats();
+    const list = filtered();
+    const pages = Math.max(1, Math.ceil(list.length/pageSize));
+    if(page >= pages) page = pages - 1;
+    const slice = list.slice(page*pageSize, page*pageSize+pageSize);
+    $('rows').innerHTML = slice.map(studentRow).join('');
+    mpsHydrateAvatars($('rows'));
+    $('empty').hidden = list.length > 0;
+    let billed=0, paid=0, due=0;
+    list.forEach(s => { const st = stats.get(s.id); if(st){ billed+=st.billed; paid+=st.paid; due+=st.due; } });
+    $('foot').innerHTML = '<tr><td colspan="2">Filtered total · ' + list.length + ' student(s)</td><td class="num">' + mpsCurrency(billed) + '</td><td class="num">' + mpsCurrency(paid) + '</td><td class="num">' + mpsCurrency(due) + '</td><td colspan="2"></td></tr>';
+    $('countLabel').textContent = list.length + ' of ' + students.length + ' students';
+    $('totalsLabel').textContent = 'Outstanding in view: ' + mpsCurrency(due);
+    $('pager').innerHTML = pages > 1
+      ? '<button class="mini" data-page="' + (page-1) + '" ' + (page===0?'disabled':'') + '>‹ Prev</button>' +
+        '<span>Page ' + (page+1) + ' of ' + pages + '</span>' +
+        '<button class="mini" data-page="' + (page+1) + '" ' + (page>=pages-1?'disabled':'') + '>Next ›</button>'
+      : '';
+    renderKpis();
+  }
+
+  function renderAll(){ renderClassOptions(); renderTable(); renderLedger(); }
+
+  /* -------- dialogs -------- */
+  document.querySelectorAll('dialog [data-close]').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
+
+  function openCharge(id){
+    const s = students.find(x => x.id === id);
+    if(!s) return;
+    chargeTargetId = id;
+    $('chargeWho').textContent = (s.name||'') + ' · ' + mpsClassLabel(s) + ' · ' + session;
+    $('chAmount').value = '';
+    $('chNote').value = '';
+    $('chDue').value = '';
+    $('chDate').value = today();
+    $('chargeDlg').showModal();
+  }
+  function openPay(id){
+    const s = students.find(x => x.id === id);
+    if(!s) return;
+    payTargetId = id;
+    const st = stats.get(id) || { due:0 };
+    $('payWho').textContent = (s.name||'') + ' · ' + mpsClassLabel(s) + ' · due ' + mpsCurrency(st.due);
+    $('pyAmount').value = st.due > 0 ? st.due : '';
+    $('pyNote').value = '';
+    $('pyRef').value = '';
+    $('pyDate').value = today();
+    $('payDlg').showModal();
+  }
+
+  function addCharge(studentId, head, amount, due, date, note){
+    const fees = mpsFees();
+    fees.push({ id: mpsNewId('fee'), studentId, session, kind:'charge', head, amount: Number(amount), paid: 0, dueDate: due||'', date: date||today(), note: note||'', updatedAt: Date.now() });
+    return mpsSaveFees(fees);
+  }
+  function addPayment(studentId, amount, mode, date, note, ref){
+    const fees = mpsFees();
+    fees.push({ id: mpsNewId('fee'), studentId, session, kind:'payment', head:'Payment', amount: 0, paid: Number(amount), mode: mode||'', date: date||today(), note: [note, ref ? ('Ref: ' + ref) : ''].filter(Boolean).join(' · '), updatedAt: Date.now() });
+    return mpsSaveFees(fees);
+  }
+
+  $('chargeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = Number($('chAmount').value);
+    if(!(amount > 0)) return;
+    const ok = addCharge(chargeTargetId, $('chHead').value, amount, $('chDue').value, $('chDate').value, $('chNote').value.trim());
+    if(!ok){ alert('Could not save — storage may be full.'); return; }
+    $('chargeDlg').close();
+    renderAll();
+  });
+  $('payForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const amount = Number($('pyAmount').value);
+    if(!(amount > 0)) return;
+    const ok = addPayment(payTargetId, amount, $('pyMode').value, $('pyDate').value, $('pyNote').value.trim(), $('pyRef').value.trim());
+    if(!ok){ alert('Could not save — storage may be full.'); return; }
+    $('payDlg').close();
+    renderAll();
+  });
+
+  /* -------- table + filters -------- */
+  $('rows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if(!b) return;
+    const id = b.dataset.id;
+    if(b.dataset.act === 'charge') openCharge(id);
+    else if(b.dataset.act === 'pay') openPay(id);
+    else if(b.dataset.act === 'ledger'){ ledgerStudentId = id; renderLedger(); $('ledgerPanel').scrollIntoView({behavior:'smooth',block:'start'}); }
+  });
+  ['q','fClass','fStatus'].forEach(id => $(id).addEventListener('input', () => { page = 0; renderTable(); }));
+  ['q','fClass','fStatus'].forEach(id => $(id).addEventListener('change', () => { page = 0; renderTable(); }));
+  $('fSort').addEventListener('change', () => { sortKey = $('fSort').value; renderTable(); });
+  document.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    sortKey = th.dataset.sort;
+    $('fSort').value = sortKey;
+    renderTable();
+  }));
+  $('clearFilters').onclick = () => { $('q').value=''; $('fClass').value=''; $('fStatus').value=''; sortKey='due'; $('fSort').value='due'; page=0; renderTable(); };
+  $('pager').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-page]');
+    if(!b) return;
+    page = Math.max(0, Number(b.dataset.page)||0);
+    renderTable();
+  });
+  $('sessionSel').addEventListener('change', () => {
+    session = $('sessionSel').value;
+    $('sessionMode').textContent = session === config.activeSession ? 'Active' : 'Past / planned';
+    page = 0;
+    renderAll();
+  });
+
+  /* -------- ledger -------- */
+  function renderLedger(){
+    const panel = $('ledgerPanel');
+    if(!ledgerStudentId){ panel.hidden = true; return; }
+    const s = students.find(x => x.id === ledgerStudentId);
+    if(!s){ panel.hidden = true; return; }
+    panel.hidden = false;
+    const st = stats.get(ledgerStudentId) || { billed:0, paid:0, due:0, status:'none', records:[] };
+    $('ledgerTitle').textContent = 'Ledger · ' + (s.name||'') + ' · ' + mpsClassLabel(s);
+    $('ledgerTotals').innerHTML = '<span>Session <b>' + esc(session) + '</b></span><span>Billed <b>' + mpsCurrency(st.billed) + '</b></span><span>Paid <b>' + mpsCurrency(st.paid) + '</b></span><span>Due <b>' + mpsCurrency(st.due) + '</b></span>' + statusBadge(st.status);
+    $('ledgerCharge').onclick = () => openCharge(ledgerStudentId);
+    $('ledgerPay').onclick = () => openPay(ledgerStudentId);
+    const records = (st.records||[]).slice().sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')));
+    $('ledgerRows').innerHTML = records.map(r => {
+      const isPay = r.kind === 'payment';
+      const date = isPay ? (r.date||'') : (r.dueDate || r.date || '');
+      return '<tr data-fee="' + esc(r.id) + '">' +
+        '<td>' + esc(date || '—') + '</td>' +
+        '<td><span class="badge ' + (isPay?'good':'muted') + '">' + (isPay?'Payment':'Charge') + '</span></td>' +
+        '<td>' + esc(r.head || (isPay?'Payment':'Fee')) + '</td>' +
+        '<td class="num">' + (isPay ? '—' : mpsCurrency(r.amount)) + '</td>' +
+        '<td class="num">' + (isPay ? mpsCurrency(r.paid) : '—') + '</td>' +
+        '<td class="note-cell">' + esc([r.mode, r.note].filter(Boolean).join(' · ') || '—') + '</td>' +
+        '<td><div class="row-actions"><button class="mini warn" type="button" data-del-fee="' + esc(r.id) + '">Delete</button></div></td></tr>';
+    }).join('');
+    $('ledgerEmpty').hidden = records.length > 0;
+  }
+  $('ledgerClose').onclick = () => { ledgerStudentId = ''; $('ledgerPanel').hidden = true; };
+  $('ledgerRows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-del-fee]');
+    if(!b) return;
+    if(!confirm('Delete this fee entry?')) return;
+    mpsSaveFees(mpsFees().filter(f => f.id !== b.dataset.delFee));
+    renderAll();
+  });
+
+  /* -------- class-wise bulk -------- */
+  function classStudents(value){
+    const [grade, section] = String(value||'').split('|');
+    return students.filter(s => String(s.grade||'') === grade && String(s.section||'') === section && mpsIsActive(s));
+  }
+
+  $('classChargeForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const list = classStudents($('ccClass').value);
+    const amount = Number($('ccAmount').value);
+    if(!list.length){ alert('No active students in that class.'); return; }
+    if(!(amount > 0)) return;
+    if(!confirm('Add ' + mpsCurrency(amount) + ' to ' + list.length + ' student(s) in ' + $('ccClass').selectedOptions[0].textContent + '?')) return;
+    const fees = mpsFees();
+    const head = $('ccHead').value, due = $('ccDue').value, note = $('ccNote').value.trim();
+    list.forEach(s => fees.push({ id: mpsNewId('fee'), studentId: s.id, session, kind:'charge', head, amount, paid: 0, dueDate: due, date: today(), note, updatedAt: Date.now() }));
+    if(!mpsSaveFees(fees)){ alert('Could not save — storage may be full.'); return; }
+    $('ccMsg').textContent = 'Charge added to ' + list.length + ' student(s).';
+    $('classChargeForm').reset();
+    $('ccDue').value = '';
+    renderAll();
+  });
+
+  $('classPayForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const list = classStudents($('cpClass').value);
+    const amount = Number($('cpAmount').value);
+    if(!list.length){ alert('No active students in that class.'); return; }
+    if(!(amount > 0)) return;
+    if(!confirm('Record ' + mpsCurrency(amount) + ' payment for ' + list.length + ' student(s) in ' + $('cpClass').selectedOptions[0].textContent + '?')) return;
+    const fees = mpsFees();
+    const mode = $('cpMode').value, date = $('cpDate').value, note = $('cpNote').value.trim();
+    list.forEach(s => fees.push({ id: mpsNewId('fee'), studentId: s.id, session, kind:'payment', head:'Payment', amount: 0, paid: amount, mode, date: date||today(), note, updatedAt: Date.now() }));
+    if(!mpsSaveFees(fees)){ alert('Could not save — storage may be full.'); return; }
+    $('cpMsg').textContent = 'Payment recorded for ' + list.length + ' student(s).';
+    $('classPayForm').reset();
+    $('cpDate').value = today();
+    renderAll();
+  });
+
+  /* -------- CSV export -------- */
+  $('exportCsv').onclick = () => {
+    const list = filtered();
+    const rows = [['Admission no.','Name','Class','Section','Billed','Paid','Due','Status','Session']];
+    list.forEach(s => {
+      const st = stats.get(s.id) || {billed:0,paid:0,due:0,status:'none'};
+      rows.push([s.adm||s.roll||'', s.name||'', s.grade||'', s.section||'', st.billed, st.paid, st.due, mpsFeeStatusLabel(st.status), session]);
+    });
+    const csv = rows.map(r => r.map(v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mps-fees-' + session.replace(/[^\w]+/g,'-') + '-' + today() + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+
+  renderAll();
+  if(ledgerStudentId){ renderLedger(); }
+})();
+</script></body></html>

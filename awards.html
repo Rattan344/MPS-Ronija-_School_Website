@@ -1,0 +1,313 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Awards, scholarships and top performers at Mamta Public School — class toppers, session toppers and all-time records.">
+<title>Awards &amp; Scholarships — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .page-actions a{font-size:12px;border:1px solid #b9c8e0;border-radius:999px;padding:6px 11px;background:#fff;color:var(--n8);font-weight:600}
+  .page-actions a:hover{border-color:var(--n9)}
+  #rows td{white-space:nowrap}
+  #rows .who{white-space:normal}
+  .medal{font-size:15px;line-height:1}
+  .class-top{display:grid;gap:10px;margin-top:10px}
+  .class-top .ct{border:1px solid #eef1f6;border-radius:10px;padding:10px 12px;background:#fafbfd}
+  .class-top .ct h4{margin:0 0 6px;font:600 12px 'Inter Tight';color:#5b7fae;letter-spacing:.08em;text-transform:uppercase}
+  .rank-row .who b{font-size:13px}
+  .rank-row .meta{font-size:11px;color:#5b7fae}
+</style>
+</head><body>
+<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Awards &amp; Scholarships</span></div>
+  <div class="toolbar">
+    <a class="back" href="students.html">Students</a>
+    <a class="back" href="marks.html">Marks</a>
+    <a class="back" href="fees.html">Fees</a>
+    <a class="back" href="analytics.html">Analytics</a>
+    <a class="back" href="dashboard.html">← Dashboard</a>
+    <button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button>
+  </div></div></div>
+
+<main class="admin-main">
+  <div class="admin-head">
+    <div><h1>Awards &amp; scholarships</h1>
+      <p>Recognise class toppers, session toppers and all-time record holders. Every award stays linked to the student record and appears in analytics.</p></div>
+    <span class="session-chip">Session <b id="sessionLabel">—</b></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head"><h2>Top performers</h2>
+        <div class="tabs-line" style="border:0;margin:0;gap:2px">
+          <button type="button" class="active" data-scope="session">This session</button>
+          <button type="button" data-scope="all">All-time</button>
+        </div>
+      </div>
+      <p class="sub" id="boardNote"></p>
+      <h3 style="margin:12px 0 8px;font-size:13px;color:#5b7fae;text-transform:uppercase;letter-spacing:.1em">School top 10</h3>
+      <div class="ranking" id="schoolBoard"><div class="empty">No marks recorded yet. <a href="marks.html" style="text-decoration:underline">Enter marks</a> to build rankings.</div></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Class toppers</h2><span class="hint">Top 3 per class</span></div>
+      <div class="class-top" id="classBoard"><div class="empty">Enter marks to see class-wise toppers.</div></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Add an award or scholarship</h2></div>
+    <form id="awardForm" autocomplete="off">
+      <div class="form-grid">
+        <div><label for="aStudent">Student *</label><select id="aStudent" required></select></div>
+        <div><label for="aKind">Type</label><select id="aKind"><option value="award">Award</option><option value="scholarship">Scholarship</option></select></div>
+        <div><label for="aTitle">Title *</label><input id="aTitle" required maxlength="70" placeholder="e.g. Class Topper — Half-Yearly"></div>
+        <div><label for="aCategory">Category</label><select id="aCategory"><option>Academic</option><option>Merit</option><option>Sports</option><option>Cultural</option><option>Attendance</option><option>Need-based</option><option>Other</option></select></div>
+        <div><label for="aSession">Session</label><select id="aSession"></select></div>
+        <div><label for="aAmount">Amount (₹, optional)</label><input id="aAmount" type="number" min="0" step="0.01" placeholder="0"></div>
+        <div><label for="aDate">Date</label><input id="aDate" type="date"></div>
+        <div><label for="aNote">Note</label><input id="aNote" maxlength="100" placeholder="Citation, sponsor or remarks"></div>
+      </div>
+      <div class="form-actions"><button class="btn dark" type="submit">Save award</button><span class="hint" id="formMsg" aria-live="polite"></span></div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Award register</h2>
+      <div class="toolbar"><button class="mini" type="button" id="exportCsv">Export CSV</button></div>
+    </div>
+    <div class="filters">
+      <div style="grid-column:span 2"><label for="q">Search</label><input id="q" placeholder="Student, title, note"></div>
+      <div><label for="fClass">Class</label><select id="fClass"><option value="">All classes</option></select></div>
+      <div><label for="fSession">Session</label><select id="fSession"><option value="">All sessions</option></select></div>
+      <div><label for="fKind">Type</label><select id="fKind"><option value="">All</option><option value="award">Awards</option><option value="scholarship">Scholarships</option></select></div>
+      <div><button class="mini" type="button" id="clearFilters" style="margin-bottom:1px">Clear</button></div>
+    </div>
+    <div class="table-wrap" style="margin-top:10px">
+      <table class="data">
+        <thead><tr><th>Student</th><th>Award / scholarship</th><th>Category</th><th>Session</th><th class="num">Amount</th><th>Date</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty" hidden>No awards match these filters.</div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const today = () => new Date().toISOString().slice(0,10);
+  let students = mpsStudents();
+  let config = mpsConfig();
+  let session = mpsSession();
+  let scope = 'session';
+
+  $('sessionLabel').textContent = session;
+  $('aSession').innerHTML = config.sessions.map(s => '<option' + (s===session?' selected':'') + '>' + esc(s) + '</option>').join('');
+  $('fSession').innerHTML = '<option value="">All sessions</option>' + config.sessions.slice().reverse().map(s => '<option>' + esc(s) + '</option>').join('');
+  $('aDate').value = today();
+
+  /* -------- student picker (grouped by class) -------- */
+  function renderStudentPicker(){
+    const classes = mpsClassListFrom(students);
+    let html = '<option value="">Choose a student…</option>';
+    classes.forEach(c => {
+      const list = students.filter(s => String(s.grade||'') === c.grade && String(s.section||'') === c.section)
+        .sort((a,b) => String(a.name||'').localeCompare(String(b.name||'')));
+      if(!list.length) return;
+      html += '<optgroup label="' + esc(c.label) + '">' + list.map(s =>
+        '<option value="' + esc(s.id) + '">' + esc(s.name||'(no name)') + ' · ' + esc(s.adm||s.roll||'—') + (mpsIsActive(s)?'':' · inactive') + '</option>').join('') + '</optgroup>';
+    });
+    $('aStudent').innerHTML = html;
+    const grades = Array.from(new Set(students.map(s => s.grade).filter(Boolean)));
+    $('fClass').innerHTML = '<option value="">All classes</option>' + Array.from(new Set(grades)).sort((a,b)=>{
+      const ia=mpsGradeIndex(a), ib=mpsGradeIndex(b); return (ia<0?999:ia)-(ib<0?999:ib);
+    }).map(g => '<option value="' + esc(g) + '">Class ' + esc(g) + '</option>').join('');
+  }
+
+  /* -------- rankings -------- */
+  function leaderboard(allTime){
+    const byId = new Map(students.map(s => [s.id, s]));
+    const best = new Map();
+    mpsMarks().forEach(m => {
+      if(!allTime && m.session !== session) return;
+      const pct = mpsPercentFromMark(m);
+      if(pct == null) return;
+      const prev = best.get(m.studentId);
+      if(!prev || pct > prev.pct) best.set(m.studentId, { pct, mark: m });
+    });
+    return Array.from(best.entries())
+      .map(([id, o]) => ({ student: byId.get(id), pct: o.pct, mark: o.mark }))
+      .filter(x => x.student)
+      .sort((a,b) => b.pct - a.pct || String(a.student.name||'').localeCompare(String(b.student.name||'')));
+  }
+
+  function initials(name){ return String(name||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase(); }
+
+  function boardRow(entry, index){
+    const s = entry.student;
+    const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : String(index+1);
+    return '<div class="rank-row top' + Math.min(index+1,3) + '">' +
+      '<div class="pos">' + medal + '</div>' +
+      mpsAvatar(s) +
+      '<div class="who"><b>' + esc(s.name||'(no name)') + '</b><span class="meta">' + esc(mpsClassLabel(s)) + ' · ' + esc((entry.mark && entry.mark.exam) || '') + '</span></div>' +
+      '<span class="pct">' + entry.pct + '%</span>' +
+      '<button class="mini" type="button" data-award="' + esc(s.id) + '" data-pct="' + entry.pct + '">Award</button>' +
+    '</div>';
+  }
+
+  function renderBoard(){
+    const all = scope === 'all';
+    const board = leaderboard(all);
+    $('boardNote').textContent = all
+      ? 'Best score of each student across every saved session.'
+      : 'Best score in ' + session + '. Enter marks from the Marks page.';
+    $('schoolBoard').innerHTML = board.length
+      ? board.slice(0,10).map(boardRow).join('')
+      : '<div class="empty">No marks recorded yet. <a href="marks.html" style="text-decoration:underline">Enter marks</a> to build rankings.</div>';
+    mpsHydrateAvatars($('schoolBoard'));
+
+    const classes = mpsClassListFrom(students);
+    const html = classes.map(c => {
+      const list = board.filter(x => String(x.student.grade||'') === c.grade && String(x.student.section||'') === c.section).slice(0,3);
+      if(!list.length) return '';
+      return '<div class="ct"><h4>' + esc(c.label) + '</h4>' +
+        list.map((x,i) => '<div class="rank-row top' + (i+1) + '" style="padding:6px 8px;margin-top:4px;background:#fff"><div class="pos">' + (i+1) + '</div>' +
+          '<div class="who"><b style="font-size:12.5px">' + esc(x.student.name||'') + '</b></div><span class="pct">' + x.pct + '%</span>' +
+          '<button class="mini" type="button" data-award="' + esc(x.student.id) + '" data-pct="' + x.pct + '">Award</button></div>').join('') +
+      '</div>';
+    }).join('');
+    $('classBoard').innerHTML = html || '<div class="empty">Enter marks to see class-wise toppers.</div>';
+    mpsHydrateAvatars($('classBoard'));
+  }
+
+  document.querySelectorAll('[data-scope]').forEach(b => b.addEventListener('click', () => {
+    scope = b.dataset.scope;
+    document.querySelectorAll('[data-scope]').forEach(x => x.classList.toggle('active', x === b));
+    renderBoard();
+  }));
+
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-award]');
+    if(!b) return;
+    const s = students.find(x => x.id === b.dataset.award);
+    if(!s) return;
+    $('aStudent').value = s.id;
+    $('aKind').value = 'award';
+    $('aCategory').value = 'Academic';
+    $('aTitle').value = 'Top performer · ' + mpsClassLabel(s) + ' (' + b.dataset.pct + '%)';
+    $('aSession').value = scope === 'all' ? session : session;
+    $('aNote').value = scope === 'all' ? 'All-time school record' : 'Session topper';
+    $('awardForm').scrollIntoView({ behavior:'smooth', block:'center' });
+    $('aTitle').focus();
+  });
+
+  /* -------- KPIs -------- */
+  function renderKpis(){
+    const awards = mpsAwards();
+    const sessionAwards = awards.filter(a => a.session === session);
+    const scholarships = awards.filter(a => a.kind === 'scholarship');
+    const amount = scholarships.reduce((n,a) => n + (Number(a.amount)||0), 0);
+    const recognised = new Set(awards.map(a => a.studentId)).size;
+    $('kpis').innerHTML = [
+      kpi(sessionAwards.length, 'Awards this session', awards.length + ' in register'),
+      kpi(scholarships.length, 'Scholarships', mpsCurrency(amount) + ' awarded', 'gold'),
+      kpi(recognised, 'Students recognised', 'all sessions', 'info'),
+      kpi(leaderboard(false).length, 'Students with marks', 'this session')
+    ].join('');
+  }
+  function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(label) + '</div><div class="s">' + esc(sub) + '</div></div>'; }
+
+  /* -------- register -------- */
+  function filteredAwards(){
+    const q = $('q').value.trim().toLowerCase();
+    const fClass = $('fClass').value;
+    const fSession = $('fSession').value;
+    const fKind = $('fKind').value;
+    return mpsAwards().filter(a => {
+      const s = students.find(x => x.id === a.studentId);
+      if(!s) return false;
+      if(fClass && String(s.grade||'') !== fClass) return false;
+      if(fSession && a.session !== fSession) return false;
+      if(fKind && a.kind !== fKind) return false;
+      if(q){
+        const hay = [s.name, s.adm, a.title, a.category, a.note].join(' ').toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    }).sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')) || (Number(b.updatedAt)||0)-(Number(a.updatedAt)||0));
+  }
+
+  function renderTable(){
+    const list = filteredAwards();
+    $('rows').innerHTML = list.map(a => {
+      const s = students.find(x => x.id === a.studentId) || {};
+      const kind = a.kind === 'scholarship' ? '<span class="badge gold">Scholarship</span>' : '<span class="badge info">Award</span>';
+      return '<tr data-id="' + esc(a.id) + '"><td><div class="who">' + mpsAvatar(s) +
+        '<div><b>' + esc(s.name||'(removed student)') + '</b><small>' + esc(mpsClassLabel(s)) + ' · ' + esc(s.adm||s.roll||'') + '</small></div></div></td>' +
+        '<td>' + kind + ' ' + esc(a.title||'') + '</td>' +
+        '<td>' + esc(a.category||'—') + '</td>' +
+        '<td>' + esc(a.session||'—') + '</td>' +
+        '<td class="num">' + (Number(a.amount) ? mpsCurrency(a.amount) : '—') + '</td>' +
+        '<td>' + esc(a.date||'—') + '</td>' +
+        '<td><div class="row-actions"><button class="mini warn" type="button" data-del="' + esc(a.id) + '">Delete</button></div></td></tr>';
+    }).join('');
+    mpsHydrateAvatars($('rows'));
+    $('empty').hidden = list.length > 0;
+  }
+
+  function renderAll(){ renderStudentPicker(); renderBoard(); renderKpis(); renderTable(); }
+
+  /* -------- add / delete -------- */
+  $('awardForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const studentId = $('aStudent').value;
+    const title = $('aTitle').value.trim();
+    if(!studentId || !title){ alert('Choose a student and enter a title.'); return; }
+    const awards = mpsAwards();
+    awards.push({
+      id: mpsNewId('awd'), studentId, session: $('aSession').value, kind: $('aKind').value,
+      title, category: $('aCategory').value, amount: Number($('aAmount').value)||0,
+      date: $('aDate').value||today(), note: $('aNote').value.trim(), updatedAt: Date.now()
+    });
+    if(!mpsSaveAwards(awards)){ alert('Could not save — storage may be full.'); return; }
+    $('formMsg').textContent = 'Award saved.';
+    $('aTitle').value = ''; $('aAmount').value = ''; $('aNote').value = '';
+    renderAll();
+  });
+
+  $('rows').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-del]');
+    if(!b) return;
+    if(!confirm('Delete this award entry?')) return;
+    mpsSaveAwards(mpsAwards().filter(a => a.id !== b.dataset.del));
+    renderAll();
+  });
+
+  ['q','fClass','fSession','fKind'].forEach(id => {
+    $(id).addEventListener('input', renderTable);
+    $(id).addEventListener('change', renderTable);
+  });
+  $('clearFilters').onclick = () => { $('q').value=''; $('fClass').value=''; $('fSession').value=''; $('fKind').value=''; renderTable(); };
+
+  $('exportCsv').onclick = () => {
+    const rows = [['Student','Admission no.','Class','Type','Title','Category','Session','Amount','Date','Note']];
+    filteredAwards().forEach(a => {
+      const s = students.find(x => x.id === a.studentId) || {};
+      rows.push([s.name||'', s.adm||s.roll||'', mpsClassLabel(s), a.kind||'award', a.title||'', a.category||'', a.session||'', a.amount||0, a.date||'', a.note||'']);
+    });
+    const csv = rows.map(r => r.map(v => '"' + String(v==null?'':v).replace(/"/g,'""') + '"').join(',')).join('\r\n');
+    const blob = new Blob([csv], { type:'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mps-awards-' + today() + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  };
+
+  renderAll();
+})();
+</script></body></html>

@@ -1,0 +1,358 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Manage academic sessions, promote classes and back up school data at Mamta Public School.">
+<title>Sessions &amp; Promotion — Mamta Public School</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E">
+<style>
+  .page-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .page-actions a{font-size:12px;border:1px solid #b9c8e0;border-radius:999px;padding:6px 11px;background:#fff;color:var(--n8);font-weight:600}
+  .page-actions a:hover{border-color:var(--n9)}
+  .session-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #eef1f6;flex-wrap:wrap}
+  .session-row:last-child{border-bottom:0}
+  .session-row .sname{font-weight:700;font-size:14px;min-width:110px}
+  .session-row .smeta{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#5b7fae;flex:1}
+  .session-row .smeta b{color:var(--n8)}
+  .danger-zone{border:1px solid #e5a3a3;border-radius:12px;padding:14px;background:#fff8f8}
+  .danger-zone h3{color:#b91c1c}
+  .storage-line{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;padding:6px 0;border-bottom:1px solid #eef1f6}
+  .storage-line:last-child{border-bottom:0}
+  .storage-line b{font-weight:600}
+</style>
+</head><body>
+<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Sessions &amp; Promotion</span></div>
+  <div class="toolbar">
+    <a class="back" href="students.html">Students</a>
+    <a class="back" href="marks.html">Marks</a>
+    <a class="back" href="fees.html">Fees</a>
+    <a class="back" href="analytics.html">Analytics</a>
+    <a class="back" href="dashboard.html">← Dashboard</a>
+    <button type="button" class="btn ghost" style="padding:6px 12px;font-size:12px" onclick="logout()">Logout</button>
+  </div></div></div>
+
+<main class="admin-main">
+  <div class="admin-head">
+    <div><h1>Sessions &amp; promotion</h1>
+      <p>Each academic year is a session. Marks, fees and awards are tagged with the session they belong to, so history survives promotion and toppers can be compared across years.</p></div>
+    <span class="session-chip">Active session <b id="activeLabel">—</b></span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head"><h2>Active session</h2></div>
+      <p class="sub">New marks, fees and awards are recorded against the active session by default.</p>
+      <div class="form-grid" style="margin-top:10px">
+        <div><label for="activeSel">Session</label><select id="activeSel"></select></div>
+        <div><label>&nbsp;</label><button class="btn dark" type="button" id="saveActive" style="width:100%">Set active session</button></div>
+      </div>
+      <div class="form-grid" style="margin-top:10px">
+        <div><label for="newSession">Add a session</label><input id="newSession" placeholder="e.g. 2027–28" maxlength="16"></div>
+        <div><label>&nbsp;</label><button class="mini" type="button" id="addSession" style="padding:10px 14px;width:100%">Add session</button></div>
+      </div>
+      <p class="hint" id="sessionMsg" aria-live="polite"></p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Start next session</h2></div>
+      <p class="sub">Creates a new session, promotes every active student one class up and sets the new session active. Class XII students are marked graduated.</p>
+      <div class="form-grid" style="margin-top:10px">
+        <div><label for="nextLabel">New session label</label><input id="nextLabel" maxlength="16"></div>
+        <div><label>&nbsp;</label><button class="btn" type="button" id="startNext" style="width:100%">Start next session</button></div>
+      </div>
+      <p class="note" style="margin-top:10px">Marks, fees and awards from earlier sessions are kept and still appear in all-time analytics. Students who leave should be set to <b>Left / TC</b> before promotion.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Promote one class</h2><span class="hint">Useful when only one batch moves up</span></div>
+    <form id="promoteClassForm">
+      <div class="form-grid">
+        <div><label for="fromClass">From class</label><select id="fromClass"></select></div>
+        <div><label for="toGrade">To class</label><select id="toGrade"></select></div>
+      </div>
+      <div class="form-actions"><button class="btn dark" type="submit">Promote class</button><span class="hint" id="promoteMsg" aria-live="polite"></span></div>
+    </form>
+    <p class="note" style="margin-top:12px">Sections are kept. “Graduated” moves the students out of active lists but keeps their history.</p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Session history</h2><span class="hint">All records are counted live</span></div>
+    <div id="sessionList"></div>
+    <div class="empty" id="sessionEmpty" hidden>No sessions yet.</div>
+  </section>
+
+  <div class="grid-2">
+    <section class="panel">
+      <div class="panel-head"><h2>Backup &amp; restore</h2></div>
+      <p class="sub">Everything lives in this browser on this computer. Download a backup regularly, especially before promoting a session or switching computers.</p>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="mini solid" type="button" id="exportAll">Download full backup</button>
+        <label class="mini" style="margin:0;text-transform:none;letter-spacing:0;font-size:11.5px;color:var(--n8)">Restore from backup<input type="file" id="importAll" accept="application/json,.json" hidden></label>
+        <button class="mini" type="button" id="compressPhotos">Compress stored photos</button>
+      </div>
+      <div id="storageInfo" style="margin-top:14px"></div>
+    </section>
+
+    <section class="panel danger-zone">
+      <div class="panel-head"><h2 style="color:#b91c1c">Danger zone</h2></div>
+      <p class="sub">Erase the student database, marks, fees, awards and session settings on this computer. Download a backup first.</p>
+      <div class="form-actions" style="margin-top:12px">
+        <button class="mini warn" type="button" id="cleanOrphans">Clean orphan records</button>
+        <button class="mini warn" type="button" id="eraseAll">Erase all school data</button>
+      </div>
+      <p class="hint" id="dangerMsg" aria-live="polite" style="margin-top:10px"></p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>How promotion keeps data consistent</h2></div>
+    <div class="table-wrap">
+      <table class="data" style="min-width:560px">
+        <thead><tr><th>Data</th><th>Linked by</th><th>What promotion changes</th></tr></thead>
+        <tbody>
+          <tr><td>Student</td><td>Unique student id</td><td>Class, section and status only — name, photo, admission no. stay</td></tr>
+          <tr><td>Marks</td><td>Student id + session + exam</td><td>Nothing; old session scores remain for history</td></tr>
+          <tr><td>Fees</td><td>Student id + session</td><td>Nothing; new charges are added in the new session</td></tr>
+          <tr><td>Awards</td><td>Student id + session</td><td>Nothing; the register keeps every year</td></tr>
+          <tr><td>ID / admit cards</td><td>Student id</td><td>Re-generated from the current record every time</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const today = () => new Date().toISOString().slice(0,10);
+
+  function refresh(){
+    const config = mpsConfig();
+    const students = mpsStudents();
+    const marks = mpsMarks();
+    const fees = mpsFees();
+    const awards = mpsAwards();
+
+    $('activeLabel').textContent = config.activeSession;
+    $('activeSel').innerHTML = config.sessions.map(s => '<option' + (s===config.activeSession?' selected':'') + '>' + esc(s) + '</option>').join('');
+    const next = mpsNextSessionLabel(config.activeSession);
+    $('nextLabel').value = next;
+
+    const active = students.filter(mpsIsActive);
+    const billed = fees.filter(f => f.session === config.activeSession).reduce((n,f) => n + (Number(f.amount)||0), 0);
+    const paid = fees.filter(f => f.session === config.activeSession).reduce((n,f) => n + (Number(f.paid)||0), 0);
+    $('kpis').innerHTML = [
+      kpi(config.sessions.length, 'Sessions', 'history kept'),
+      kpi(active.length, 'Active students', students.length + ' total'),
+      kpi(marks.filter(m => m.session === config.activeSession).length, 'Marks this session', marks.length + ' all sessions', 'info'),
+      kpi(mpsCurrency(paid), 'Collected this session', mpsCurrency(billed) + ' billed', 'gold')
+    ].join('');
+
+    const classList = mpsClassListFrom(students);
+    $('fromClass').innerHTML = classList.length
+      ? classList.map(c => '<option value="' + esc(c.grade) + '|' + esc(c.section) + '">' + esc(c.label) + ' — ' + c.count + '</option>').join('')
+      : '<option value="">No classes yet</option>';
+    $('toGrade').innerHTML = MPS_GRADES.map(g => '<option>' + g + '</option>').join('') + '<option>Graduated</option>';
+    updateTargetDefault();
+
+    $('sessionList').innerHTML = config.sessions.slice().reverse().map(s => {
+      const st = students.filter(x => x.joinedSession === s).length;
+      const mk = marks.filter(m => m.session === s).length;
+      const fs = fees.filter(f => f.session === s);
+      const bill = fs.reduce((n,f) => n + (Number(f.amount)||0), 0);
+      const coll = fs.reduce((n,f) => n + (Number(f.paid)||0), 0);
+      const aw = awards.filter(a => a.session === s).length;
+      return '<div class="session-row"><span class="sname">' + esc(s) + (s===config.activeSession?' <span class="badge good">Active</span>':'') + '</span>' +
+        '<span class="smeta"><span><b>' + st + '</b> joined</span><span><b>' + mk + '</b> marks</span><span><b>' + mpsCurrency(bill) + '</b> billed</span><span><b>' + mpsCurrency(coll) + '</b> collected</span><span><b>' + aw + '</b> awards</span></span>' +
+        (s===config.activeSession ? '' : '<button class="mini" type="button" data-activate="' + esc(s) + '">Set active</button>') + '</div>';
+    }).join('');
+    $('sessionEmpty').hidden = config.sessions.length > 0;
+
+    const bytes = new Blob([JSON.stringify(mpsExportAll())]).size;
+    const orphans = marks.filter(m => !students.some(s => s.id === m.studentId)).length
+      + fees.filter(f => !students.some(s => s.id === f.studentId)).length
+      + awards.filter(a => !students.some(s => s.id === a.studentId)).length;
+    const photoCount = students.filter((s) => s.hasPhoto || (typeof s.photo === 'string' && s.photo)).length;
+    const fmtBytes = (b) => b/1024 < 1024 ? Math.round(b/1024) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+    const tight = bytes > 4 * 1024 * 1024;
+    $('storageInfo').innerHTML =
+      '<div class="storage-line"><span>Students</span><b>' + students.length + '</b></div>' +
+      '<div class="storage-line"><span>Marks records</span><b>' + marks.length + '</b></div>' +
+      '<div class="storage-line"><span>Fee entries</span><b>' + fees.length + '</b></div>' +
+      '<div class="storage-line"><span>Award entries</span><b>' + awards.length + '</b></div>' +
+      '<div class="storage-line"><span>Photos stored</span><b id="photoStat">' + photoCount + ' · checking…</b></div>' +
+      '<div class="storage-line"><span>Text data size</span><b style="color:' + (tight?'#b91c1c':'') + '">' + fmtBytes(bytes) + '</b></div>' +
+      '<div class="storage-line"><span>Browser storage used</span><b id="usageStat">…</b></div>' +
+      '<div class="storage-line"><span>Orphan records (deleted students)</span><b style="color:' + (orphans?'#b91c1c':'#166534') + '">' + orphans + '</b></div>' +
+      (tight ? '<p class="hint" style="color:#b91c1c;margin-top:8px">This browser is close to its local storage limit. Download a backup, then compress photos (or remove photos from some students).</p>' : '');
+    mpsPhotoStats().then((st) => {
+      const el = $('photoStat');
+      if(!el) return;
+      el.textContent = st.available ? (st.count + ' · ' + fmtBytes(st.bytes)) : (photoCount + ' (inline)');
+    });
+    if(navigator.storage && navigator.storage.estimate){
+      navigator.storage.estimate().then((est) => {
+        const el = $('usageStat');
+        if(el && est && est.usage != null) el.textContent = fmtBytes(est.usage) + (est.quota ? ' of ' + fmtBytes(est.quota) : '');
+      }).catch(() => {});
+    }
+  }
+  function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + esc(n) + '</div><div class="l">' + esc(label) + '</div><div class="s">' + esc(sub) + '</div></div>'; }
+
+  function updateTargetDefault(){
+    const [grade] = String($('fromClass').value||'').split('|');
+    const next = mpsNextGrade(grade);
+    if(next) $('toGrade').value = next;
+  }
+  $('fromClass').addEventListener('change', updateTargetDefault);
+
+  $('saveActive').onclick = () => {
+    const config = mpsConfig();
+    config.activeSession = $('activeSel').value;
+    mpsSaveConfig(config);
+    $('sessionMsg').textContent = 'Active session set to ' + config.activeSession + '.';
+    refresh();
+  };
+  $('addSession').onclick = () => {
+    const label = $('newSession').value.trim();
+    if(!label){ $('sessionMsg').textContent = 'Enter a session label first.'; return; }
+    const config = mpsConfig();
+    if(config.sessions.includes(label)){ $('sessionMsg').textContent = 'That session already exists.'; return; }
+    config.sessions.push(label);
+    mpsSaveConfig(config);
+    $('newSession').value = '';
+    $('sessionMsg').textContent = 'Session ' + label + ' added. Set it active when you are ready.';
+    refresh();
+  };
+
+  $('sessionList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-activate]');
+    if(!b) return;
+    const config = mpsConfig();
+    config.activeSession = b.dataset.activate;
+    mpsSaveConfig(config);
+    refresh();
+  });
+
+  $('startNext').onclick = () => {
+    const config = mpsConfig();
+    const label = $('nextLabel').value.trim() || mpsNextSessionLabel(config.activeSession);
+    if(config.sessions.includes(label)){
+      if(!confirm('Session ' + label + ' already exists. Continue and promote students anyway?')) return;
+    }
+    const students = mpsStudents();
+    const activeCount = students.filter(s => mpsIsActive(s) && mpsGradeIndex(s.grade) >= 0).length;
+    if(!confirm('Start ' + label + '?\n\nThis will promote ' + activeCount + ' active student(s) one class up, mark Class XII as graduated and make ' + label + ' the active session. Marks, fees and awards stay in their original sessions.')) return;
+    const yearMatch = label.match(/\d{4}/);
+    const validTill = yearMatch ? '31 March ' + (parseInt(yearMatch[0],10)+1) : '';
+    const promoted = students.map(s => {
+      if(!mpsIsActive(s) || mpsGradeIndex(s.grade) < 0) return s;
+      const next = mpsNextGrade(s.grade);
+      return Object.assign({}, s, {
+        grade: next,
+        section: next === 'Graduated' ? '' : s.section,
+        status: next === 'Graduated' ? 'graduated' : s.status,
+        valid: validTill || s.valid || '',
+        updatedAt: Date.now()
+      });
+    });
+    if(!mpsSaveStudents(promoted)){ alert('Could not save students — storage may be full.'); return; }
+    if(!config.sessions.includes(label)) config.sessions.push(label);
+    config.activeSession = label;
+    mpsSaveConfig(config);
+    refresh();
+    alert('Session ' + label + ' started. ' + activeCount + ' student(s) promoted.');
+  };
+
+  $('promoteClassForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const [grade, section] = String($('fromClass').value||'').split('|');
+    if(!grade){ alert('Add students first.'); return; }
+    const target = $('toGrade').value;
+    const students = mpsStudents();
+    const list = students.filter(s => String(s.grade||'') === grade && String(s.section||'') === section && mpsIsActive(s));
+    if(!list.length){ alert('No active students in that class.'); return; }
+    if(!confirm('Promote ' + list.length + ' student(s) from Class ' + grade + (section?' · '+section:'') + ' to ' + target + '?')) return;
+    const ids = new Set(list.map(s => s.id));
+    const updated = students.map(s => ids.has(s.id) ? Object.assign({}, s, {
+      grade: target,
+      section: target === 'Graduated' ? '' : s.section,
+      status: target === 'Graduated' ? 'graduated' : s.status,
+      updatedAt: Date.now()
+    }) : s);
+    mpsSaveStudents(updated);
+    $('promoteMsg').textContent = list.length + ' student(s) promoted to ' + target + '.';
+    refresh();
+  });
+
+  /* -------- backup -------- */
+  $('exportAll').onclick = async () => {
+    $('dangerMsg').textContent = '';
+    const payload = await mpsExportAllWithPhotos();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mps-full-backup-' + today() + '.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+    const n = Object.keys(payload.photos || {}).length;
+    $('dangerMsg').textContent = 'Backup downloaded · ' + payload.students.length + ' students · ' + n + ' photo(s).';
+  };
+
+  $('importAll').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try{
+        const payload = JSON.parse(String(reader.result || '{}'));
+        if(!payload || !Array.isArray(payload.students)) throw new Error('This is not a full backup file.');
+        if(!confirm('Restore this backup and replace ALL students, marks, fees, awards and photos on this computer?\n\nBackup: ' + (payload.exportedAt || 'unknown date') + '\nStudents: ' + payload.students.length)) return;
+        await mpsImportAll(payload);
+        alert('Backup restored. Reloading…');
+        location.reload();
+      }catch(err){ alert('Restore failed: ' + (err && err.message ? err.message : err)); }
+      finally { e.target.value = ''; }
+    };
+    reader.readAsText(file);
+  });
+
+  $('compressPhotos').onclick = async () => {
+    const fmt = (b) => b/1024 < 1024 ? Math.round(b/1024) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+    $('dangerMsg').textContent = 'Checking stored photos…';
+    const res = await mpsCompressStoredPhotos(180, 0.72);
+    if(!res.total){ $('dangerMsg').textContent = 'No stored photos to compress.'; return; }
+    $('dangerMsg').textContent = 'Compressed ' + res.changed + ' of ' + res.total + ' photo(s): ' + fmt(res.before) + ' → ' + fmt(res.after) + '.';
+    refresh();
+  };
+
+  $('cleanOrphans').onclick = async () => {
+    const students = mpsStudents();
+    const ids = new Set(students.map(s => s.id));
+    const before = mpsMarks().length + mpsFees().length + mpsAwards().length;
+    mpsSaveMarks(mpsMarks().filter(m => ids.has(m.studentId)));
+    mpsSaveFees(mpsFees().filter(f => ids.has(f.studentId)));
+    mpsSaveAwards(mpsAwards().filter(a => ids.has(a.studentId)));
+    const after = mpsMarks().length + mpsFees().length + mpsAwards().length;
+    const photoRes = await mpsCleanOrphanPhotos();
+    $('dangerMsg').textContent = (before-after) + ' orphan record(s) and ' + photoRes.removed + ' orphan photo(s) removed.';
+    refresh();
+  };
+
+  $('eraseAll').onclick = async () => {
+    if(!confirm('Erase ALL school data on this computer? This cannot be undone.')) return;
+    const typed = prompt('Type ERASE to confirm.');
+    if(String(typed||'').toUpperCase() !== 'ERASE'){ $('dangerMsg').textContent = 'Erase cancelled.'; return; }
+    await mpsPhotoClear();
+    [MPS_DB.students, MPS_DB.marks, MPS_DB.fees, MPS_DB.awards, MPS_DB.config].forEach(k => {
+      try { mpsStore.removeItem(k); } catch(_) {}
+    });
+    location.reload();
+  };
+
+  refresh();
+})();
+</script></body></html>

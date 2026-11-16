@@ -1,14 +1,87 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Admin dashboard for Mamta Public School, Ronija staff tools.">
+<meta name="description" content="Admin dashboard for Mamta Public School, Ronija staff tools: students, fees, marks, awards, analytics, ID cards, admit cards and bells.">
 <title>Admin Dashboard — Mamta Public School</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css"><script src="common.js"></script><script>requireAuth()</script>
-<style>.tool{display:block;transition:.2s}.tool:hover{border-color:var(--g);transform:translateY(-3px)}.tool .ic{font-size:34px;margin-bottom:14px}</style><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
-<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Admin Panel</span></div><div><a class="back" href="index.html">View website</a> &nbsp; <button class="btn ghost" onclick="logout()">Logout</button></div></div></div>
-<main class="wrap dash-main"><p class="k k-accent">Welcome</p><h1 class="dash-title">What would you like to do?</h1>
-<div class="grid g3">
-<a class="card tool" href="students.html"><div class="ic">🗂️</div><h3>Student Database</h3><p>Save students class-wise on this computer, then feed them into ID or admit cards.</p></a>
-<a class="card tool" href="id-card.html"><div class="ic">🪪</div><h3>Generate ID Card</h3><p>Create print-ready student ID cards at CR80 size.</p></a>
-<a class="card tool" href="admit-card.html"><div class="ic">📄</div><h3>Generate Admit Card</h3><p>Prepare exam admit cards with the full timetable.</p></a>
-<a class="card tool" href="bell-system.html"><div class="ic">🔔</div><h3>Ring Bell System</h3><p>Schedule period bells and ring manually when needed.</p></a>
-</div></main></body></html>
+<style>
+  .tool{display:block;transition:.2s}
+  .tool:hover{border-color:var(--g);transform:translateY(-3px)}
+  .tool .ic{font-size:34px;margin-bottom:14px}
+  .dash-sec{margin:34px 0 14px;font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#5b7fae;font-weight:600}
+  .dash-head{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap}
+</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23070f20'/%3E%3Ctext x='32' y='45' font-family='Georgia,serif' font-size='40' font-weight='700' text-anchor='middle' fill='%23dcae2e'%3EM%3C/text%3E%3C/svg%3E"></head><body>
+<div class="top"><div class="wrap"><div class="logo"><i>M</i><span>Admin Panel</span></div><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><a class="back" href="index.html">View website</a><button class="btn ghost" onclick="logout()">Logout</button></div></div></div>
+<main class="wrap dash-main">
+  <div class="dash-head">
+    <div><p class="k k-accent">Welcome</p><h1 class="dash-title" style="margin-bottom:0">School office</h1></div>
+    <span class="session-chip">Session <b id="sessionLabel">—</b></span>
+  </div>
+
+  <div class="kpis" id="kpis" style="margin:26px 0 8px"></div>
+
+  <h2 class="dash-sec">Students &amp; records</h2>
+  <div class="grid g3">
+    <a class="card tool" href="students.html"><div class="ic">🗂️</div><h3>Student Database</h3><p>Central record for every student — search, filter, bulk edit, promote and print cards for a whole class.</p></a>
+    <a class="card tool" href="fees.html"><div class="ic">💳</div><h3>Fees &amp; Payments</h3><p>Class-wise charges, receipts, outstanding dues and a full student ledger.</p></a>
+    <a class="card tool" href="marks.html"><div class="ic">📝</div><h3>Marks &amp; Exams</h3><p>Enter marks class-wise, get automatic ranks, grades and averages.</p></a>
+    <a class="card tool" href="awards.html"><div class="ic">🏅</div><h3>Awards &amp; Scholarships</h3><p>Class toppers, session toppers, all-time records and scholarship register.</p></a>
+    <a class="card tool" href="analytics.html"><div class="ic">📊</div><h3>Analytics</h3><p>Strength, fee collection, academics, top performers and follow-up lists at a glance.</p></a>
+    <a class="card tool" href="sessions.html"><div class="ic">📅</div><h3>Sessions &amp; Promotion</h3><p>Start a new session, promote a class or the whole school, and back up everything.</p></a>
+  </div>
+
+  <h2 class="dash-sec">Print &amp; operations</h2>
+  <div class="grid g3">
+    <a class="card tool" href="id-card.html"><div class="ic">🪪</div><h3>Generate ID Card</h3><p>Print-ready CR80 student ID cards, vertical or horizontal, front and back.</p></a>
+    <a class="card tool" href="admit-card.html"><div class="ic">📄</div><h3>Generate Admit Card</h3><p>One A4 admit card per student, or print every card for a class in one click.</p></a>
+    <a class="card tool" href="bell-system.html"><div class="ic">🔔</div><h3>Ring Bell System</h3><p>Period bells, custom sounds, schedule and ESP32 hardware pairing.</p></a>
+  </div>
+
+  <p class="hint" style="margin-top:26px">All data is stored locally in this browser on this computer. Download a full backup from <a href="sessions.html" style="text-decoration:underline">Sessions &amp; Promotion</a> before changing computers.</p>
+</main>
+<script>
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const students = mpsStudents();
+  const session = mpsSession();
+  const active = students.filter(mpsIsActive);
+  $('sessionLabel').textContent = session;
+
+  const totals = new Map();
+  mpsFees().forEach(f => {
+    if(f.session !== session) return;
+    const o = totals.get(f.studentId) || { billed:0, paid:0 };
+    o.billed += Number(f.amount) || 0;
+    o.paid += Number(f.paid) || 0;
+    totals.set(f.studentId, o);
+  });
+  let due = 0, billed = 0, paid = 0;
+  active.forEach(s => {
+    const o = totals.get(s.id);
+    if(!o) return;
+    billed += o.billed; paid += o.paid;
+    due += Math.max(0, o.billed - o.paid);
+  });
+
+  const best = new Map();
+  mpsMarks().forEach(m => {
+    if(m.session !== session) return;
+    const pct = mpsPercentFromMark(m);
+    if(pct == null) return;
+    if(!best.has(m.studentId) || pct > best.get(m.studentId)) best.set(m.studentId, pct);
+  });
+  let sum = 0;
+  best.forEach(p => sum += p);
+  const avg = best.size ? Math.round(sum/best.size*10)/10 : null;
+  const awards = mpsAwards().filter(a => a.session === session).length;
+
+  function kpi(n,label,sub,tone){ return '<div class="kpi ' + (tone||'') + '"><div class="n">' + n + '</div><div class="l">' + label + '</div><div class="s">' + sub + '</div></div>'; }
+  $('kpis').innerHTML = [
+    kpi(active.length, 'Active students', students.length + ' total records', 'info'),
+    kpi(mpsCurrency(due), 'Fee outstanding', mpsCurrency(paid) + ' collected', due > 0 ? 'bad' : 'good'),
+    kpi(avg == null ? '—' : avg + '%', 'Average score', best.size + ' students scored', 'gold'),
+    kpi(awards, 'Awards this session', 'awards + scholarships')
+  ].join('');
+})();
+</script>
+</body></html>
